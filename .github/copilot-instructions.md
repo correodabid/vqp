@@ -27,23 +27,87 @@ VQP is an open protocol that enables privacy-preserving, verifiable queries over
 - **Transport**: HTTP/HTTPS, WebSocket, libp2p
 - **Standards**: DID (Decentralized Identifiers), JWT-like response format
 
+### Hexagonal Architecture
+VQP follows hexagonal architecture (ports and adapters) principles:
+- **Core Domain**: Business logic is isolated from external concerns
+- **Ports**: Define interfaces for external interactions
+- **Adapters**: Implement specific technologies (HTTP, databases, crypto)
+- **Benefits**: Testability, technology independence, extensibility
+
 ## Development Guidelines
 
 ### Code Style
 - **Language**: All development in English (comments, variables, documentation)
+- **Architecture**: Always implement hexagonal architecture patterns
 - **Naming**: Use camelCase for JavaScript/TypeScript, snake_case for Python, PascalCase for Go
 - **Error Handling**: Always include comprehensive error handling with specific error types
 - **Security**: Prioritize security in all implementations - validate inputs, use constant-time operations
 - **Testing**: Write comprehensive tests including unit, integration, and security tests
 
+### Hexagonal Architecture Implementation
+
+#### Always Define Ports First
+```typescript
+// Define the interface (port) before implementation
+interface DataAccessPort {
+  getData(path: string[]): Promise<any>;
+  validateDataAccess(path: string[], requester: string): Promise<boolean>;
+}
+
+// Then implement adapters
+class FileSystemDataAdapter implements DataAccessPort {
+  // Implementation details
+}
+
+class DatabaseDataAdapter implements DataAccessPort {
+  // Different implementation, same interface
+}
+```
+
+#### Core VQP Service Structure
+```typescript
+class VQPService {
+  constructor(
+    private dataAccess: DataAccessPort,
+    private crypto: CryptographicPort,
+    private vocabulary: VocabularyPort,
+    private audit: AuditPort
+  ) {}
+  
+  // Pure business logic, no external dependencies
+  async processQuery(query: VQPQuery): Promise<VQPResponse> {
+    // Domain logic here
+  }
+}
+```
+
+#### Dependency Injection Pattern
+```typescript
+// Configuration assembles the system
+function createVQPService(config: VQPConfig): VQPService {
+  const dataAdapter = createDataAdapter(config.data);
+  const cryptoAdapter = createCryptoAdapter(config.crypto);
+  const vocabAdapter = createVocabularyAdapter(config.vocabulary);
+  const auditAdapter = createAuditAdapter(config.audit);
+  
+  return new VQPService(dataAdapter, cryptoAdapter, vocabAdapter, auditAdapter);
+}
+```
+
 ### File Structure Patterns
 ```
 /lib/           # Core library implementations
+  /domain/      # Pure business logic (ports and domain services)
+  /adapters/    # External system implementations
+    /transport/ # HTTP, WebSocket, P2P adapters
+    /data/      # File system, database adapters
+    /crypto/    # Software, HSM crypto adapters
+    /vocab/     # HTTP, cache vocabulary adapters
 /schemas/       # Vocabulary JSON schemas  
 /examples/      # Usage examples and demos
 /tools/         # CLI tools and utilities
 /tests/         # Test suites
-/docs/          # Documentation (already created)
+/docs/          # Documentation
 ```
 
 ### Standard Vocabularies
@@ -93,6 +157,90 @@ interface VQPResponse {
 }
 ```
 
+### Hexagonal Architecture Examples
+
+#### Transport Adapter (HTTP)
+```typescript
+class HTTPTransportAdapter implements QueryPort {
+  constructor(private vqpService: VQPService) {}
+  
+  async receiveQuery(query: VQPQuery): Promise<VQPResponse> {
+    return await this.vqpService.processQuery(query);
+  }
+  
+  setupExpress(app: Express) {
+    app.post('/vqp/query', async (req, res) => {
+      try {
+        const response = await this.receiveQuery(req.body);
+        res.json(response);
+      } catch (error) {
+        res.status(400).json({ error: error.message });
+      }
+    });
+  }
+}
+```
+
+#### Crypto Adapter (Software)
+```typescript
+class SoftwareCryptoAdapter implements CryptographicPort {
+  async sign(data: Buffer, keyId: string): Promise<Signature> {
+    const privateKey = await this.getPrivateKey(keyId);
+    return ed25519.sign(data, privateKey);
+  }
+  
+  async verify(signature: Signature, data: Buffer, publicKey: string): Promise<boolean> {
+    return ed25519.verify(signature.value, data, publicKey);
+  }
+}
+```
+
+#### Data Adapter (File System)
+```typescript
+class FileSystemDataAdapter implements DataAccessPort {
+  constructor(private vaultPath: string) {}
+  
+  async getData(path: string[]): Promise<any> {
+    const vault = await this.loadVault();
+    return this.extractNestedData(vault, path);
+  }
+  
+  async validateDataAccess(path: string[], requester: string): Promise<boolean> {
+    const policies = await this.loadAccessPolicies();
+    return this.checkAccess(policies, path, requester);
+  }
+}
+```
+
+### Testing with Hexagonal Architecture
+
+#### Mock Adapters for Testing
+```typescript
+class MockDataAdapter implements DataAccessPort {
+  constructor(private mockData: any) {}
+  
+  async getData(path: string[]): Promise<any> {
+    return this.extractData(this.mockData, path);
+  }
+  
+  async validateDataAccess(): Promise<boolean> {
+    return true; // Always allow in tests
+  }
+}
+
+// Test becomes simple
+describe('VQP Service', () => {
+  it('should process age query', async () => {
+    const mockData = new MockDataAdapter({ age: 25 });
+    const mockCrypto = new MockCryptoAdapter();
+    const service = new VQPService(mockData, mockCrypto, ...);
+    
+    const response = await service.processQuery(ageQuery);
+    expect(response.result).toBe(true);
+  });
+});
+```
+
 ### Security Patterns
 - **Input Validation**: Always validate queries against vocabulary schemas
 - **Sandboxing**: Evaluate queries in isolated environments
@@ -109,124 +257,27 @@ interface VQPError {
 }
 ```
 
-## Common Code Patterns
+## Hexagonal Architecture Benefits for VQP
 
-### JSONLogic Evaluation
-```typescript
-// Safe JSONLogic evaluation with vocabulary validation
-function evaluateQuery(query: VQPQuery, vault: DataVault): boolean {
-  // 1. Validate vocabulary
-  const vocab = await loadVocabulary(query.query.vocab);
-  validateQueryAgainstVocabulary(query.query.expr, vocab);
-  
-  // 2. Extract and validate variables
-  const variables = extractVariables(query.query.expr);
-  const vaultData = vault.getData(variables);
-  
-  // 3. Evaluate with timeout and resource limits
-  return jsonLogic.apply(query.query.expr, vaultData);
-}
-```
+### 1. Technology Independence
+- **Transport Agnostic**: HTTP, WebSocket, P2P without changing core logic
+- **Storage Agnostic**: File systems, databases, cloud storage, HSMs
+- **Crypto Agnostic**: Different signature algorithms, ZK proof systems
 
-### Digital Signature Generation
-```typescript
-// Generate Ed25519 signature for response
-function signResponse(response: Omit<VQPResponse, 'proof'>, privateKey: Uint8Array): VQPResponse {
-  const payload = {
-    queryId: response.queryId,
-    result: response.result,
-    timestamp: response.timestamp,
-    responder: response.responder
-  };
-  
-  const signature = ed25519.sign(
-    new TextEncoder().encode(JSON.stringify(payload)),
-    privateKey
-  );
-  
-  return {
-    ...response,
-    proof: {
-      type: "signature",
-      algorithm: "ed25519",
-      publicKey: ed25519.getPublicKey(privateKey),
-      signature: bytesToHex(signature)
-    }
-  };
-}
-```
+### 2. Testing Excellence
+- Easy unit testing with mock adapters
+- Integration testing with real adapters
+- Clear separation of concerns
 
-### Vocabulary Loading
-```typescript
-// Load and cache vocabulary schemas
-class VocabularyResolver {
-  private cache = new Map<string, JSONSchema>();
-  
-  async loadVocabulary(vocabUri: string): Promise<JSONSchema> {
-    if (this.cache.has(vocabUri)) {
-      return this.cache.get(vocabUri)!;
-    }
-    
-    const schema = await this.fetchSchema(vocabUri);
-    this.validateSchema(schema);
-    this.cache.set(vocabUri, schema);
-    return schema;
-  }
-}
-```
+### 3. Platform Adaptability
+- Cloud Functions with lightweight adapters
+- Edge devices with embedded adapters
+- Enterprise systems with existing infrastructure adapters
 
-## Integration Patterns
-
-### HTTP Server
-```typescript
-// Express.js VQP endpoint
-app.post('/vqp/query', async (req, res) => {
-  try {
-    const query = validateQuery(req.body);
-    const response = await responder.handleQuery(query);
-    res.json(response);
-  } catch (error) {
-    res.status(400).json({ 
-      error: error.code,
-      message: error.message 
-    });
-  }
-});
-```
-
-### Microservice Integration
-```typescript
-// VQP middleware for automatic query handling
-function vqpMiddleware(config: VQPConfig) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (req.headers['content-type'] === 'application/vqp+json') {
-      const response = await handleVQPQuery(req.body, config);
-      return res.json(response);
-    }
-    next();
-  };
-}
-```
-
-## Testing Patterns
-
-### Unit Tests
-- Test JSONLogic evaluation with various expressions
-- Test signature generation and verification
-- Test vocabulary validation
-- Test error handling scenarios
-
-### Integration Tests  
-- Test full query/response flow
-- Test vocabulary resolution
-- Test transport protocols
-- Test multi-implementation compatibility
-
-### Security Tests
-- Test query injection attempts
-- Test timing attack resistance
-- Test cryptographic operations
-- Test access control enforcement
+### 4. Evolution Support
+- Add new proof systems without core changes
+- Support new transport protocols
+- Integrate with new storage technologies
 
 ## Dependencies
 
@@ -265,7 +316,7 @@ The project includes comprehensive documentation in the `/docs` folder. When imp
 
 ### Core Specifications
 - **[Protocol Specification](../docs/spec.md)**: Complete technical protocol specification including message formats, proof types, and vocabulary system
-- **[Architecture Documentation](../docs/architecture.md)**: System architecture, component design, network protocols, and deployment models
+- **[Architecture Documentation](../docs/architecture.md)**: System architecture, component design, network protocols, and deployment models including hexagonal architecture implementation
 - **[Security Model](../docs/security.md)**: Threat model, cryptographic foundations, attack scenarios, and security implementation guidelines
 
 ### Implementation Resources
@@ -276,44 +327,12 @@ The project includes comprehensive documentation in the `/docs` folder. When imp
 ### Project Planning
 - **[Development Roadmap](../docs/roadmap.md)**: Timeline, milestones, feature priorities, and research areas
 
-### Key Implementation Guidelines from Documentation
+When generating code for this project:
 
-#### From spec.md - Protocol Requirements
-- All queries must use JSONLogic v1.0.0 as the query language
-- Responses must include cryptographic proofs (signature, zk-snark, or multisig)
-- Vocabulary URIs must be resolvable and cacheable
-- Support for multiple transport protocols (HTTP, WebSocket, P2P)
+1. **Always use hexagonal architecture** - define ports first, then implement adapters
+2. **Prioritize security, performance, and adherence** to the VQP specification
+3. **Include proper error handling** and follow established patterns
+4. **Write testable code** using dependency injection and mock adapters
+5. **Maintain technology independence** by keeping business logic separate from external concerns
 
-#### From architecture.md - System Design
-- Implement VQP Node with 6 core components: Query Processor, Response Generator, Data Vault, Crypto Engine, Network Layer, Vocabulary Resolver
-- Use AES-256-GCM for data encryption, Ed25519 for signatures
-- Target performance: <100ms query processing, 1000+ QPS throughput
-- Support multiple discovery mechanisms: DNS-based, DHT-based, Registry-based
-
-#### From security.md - Security Implementation
-- Always validate queries against vocabulary schemas to prevent injection attacks
-- Implement constant-time operations to prevent timing attacks
-- Use privacy budgets to prevent correlation attacks
-- Support post-quantum cryptography preparation (future-proofing)
-- Implement comprehensive audit logging
-
-#### From vocabularies.md - Vocabulary Standards
-- Use snake_case for field names, follow JSON Schema Draft 2020-12
-- Standard vocabulary URIs format: `https://vqp.dev/vocab/{domain}/v{version}`
-- Support 8 core vocabularies: identity, financial, health, metrics, compliance, academic, supply-chain, iot
-- Custom vocabularies must follow naming conventions and provide clear descriptions
-
-#### From integration-guide.md - Implementation Patterns
-- Support multiple platforms: Node.js, Python, Go, Rust
-- Provide middleware patterns for Express.js, FastAPI, Go HTTP
-- Include Docker/Kubernetes deployment configurations
-- Implement comprehensive error handling with specific error codes
-
-#### From use-cases.md - Practical Examples
-- Age verification without exposing birth date
-- Income verification for loans without sharing bank statements
-- Health status verification without medical record access
-- System metrics verification without exposing internal data
-- Supply chain verification without revealing proprietary information
-
-When generating code for this project, prioritize security, performance, and adherence to the VQP specification. Always include proper error handling and follow the established patterns for consistency across the codebase. Refer to the documentation above for detailed implementation guidance and examples.
+Refer to the documentation above for detailed implementation guidance and examples.

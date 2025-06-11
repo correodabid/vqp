@@ -26,6 +26,12 @@ The Verifiable Query Protocol (VQP) is designed as a decentralized, privacy-pres
 - Tamper-evident message structure
 - Non-repudiation guarantees
 
+### 5. Hexagonal Architecture
+- Clean separation between business logic and external concerns
+- Ports define interfaces, adapters implement specific technologies
+- Domain-driven design with explicit boundaries
+- Facilitates testing, extensibility, and maintainability
+
 ## Core Components
 
 ### 1. VQP Node
@@ -393,3 +399,281 @@ class SensorVQPNode:
 - Cryptographic operation health
 - Data vault integrity
 - Network connectivity status
+
+## Hexagonal Architecture Implementation
+
+VQP adopts hexagonal architecture (also known as Ports and Adapters) to ensure clean separation of concerns, testability, and extensibility across all implementations.
+
+### Architecture Overview
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │              VQP Domain                 │
+                    │    ┌─────────────────────────────┐      │
+                    │    │                             │      │
+┌─────────────┐     │    │    Query Evaluation         │      │     ┌─────────────┐
+│   HTTP      │────▶│    │    Engine                   │      │────▶│  Data Vault │
+│  Adapter    │     │    │                             │      │     │  Adapter    │
+└─────────────┘     │    └─────────────────────────────┘      │     └─────────────┘
+                    │                                         │
+┌─────────────┐     │    ┌─────────────────────────────┐      │     ┌─────────────┐
+│ WebSocket   │────▶│    │   Cryptographic             │      │────▶│   Key       │
+│  Adapter    │     │    │   Proof Engine              │      │     │ Management  │
+└─────────────┘     │    │                             │      │     │  Adapter    │
+                    │    └─────────────────────────────┘      │     └─────────────┘
+┌─────────────┐     │                                         │
+│   P2P       │────▶│    ┌─────────────────────────────┐      │     ┌─────────────┐
+│  Adapter    │     │    │   Vocabulary                │      │────▶│ Vocabulary  │
+└─────────────┘     │    │   Resolution Engine         │      │     │   Cache     │
+                    │    │                             │      │     │  Adapter    │
+                    │    └─────────────────────────────┘      │     └─────────────┘
+                    │                                         │
+                    └─────────────────────────────────────────┘
+```
+
+### Core Ports (Interfaces)
+
+#### Primary Ports (Driving Side)
+These define how external actors interact with VQP:
+
+```typescript
+// Query Port - How queries are received
+interface QueryPort {
+  receiveQuery(query: VQPQuery): Promise<VQPResponse>;
+  validateQuery(query: VQPQuery): Promise<boolean>;
+}
+
+// Management Port - How the system is configured
+interface ManagementPort {
+  updateConfiguration(config: VQPConfig): Promise<void>;
+  getStatus(): Promise<SystemStatus>;
+  rotateKeys(): Promise<void>;
+}
+```
+
+#### Secondary Ports (Driven Side)
+These define how VQP interacts with external systems:
+
+```typescript
+// Data Access Port - How VQP accesses data
+interface DataAccessPort {
+  getData(path: string[]): Promise<any>;
+  validateDataAccess(path: string[], requester: string): Promise<boolean>;
+}
+
+// Cryptographic Port - How VQP handles cryptography
+interface CryptographicPort {
+  sign(data: Buffer, keyId: string): Promise<Signature>;
+  verify(signature: Signature, data: Buffer, publicKey: string): Promise<boolean>;
+  generateZKProof(circuit: string, inputs: any): Promise<ZKProof>;
+  verifyZKProof(proof: ZKProof, publicInputs: any): Promise<boolean>;
+}
+
+// Vocabulary Port - How VQP resolves vocabularies
+interface VocabularyPort {
+  resolveVocabulary(uri: string): Promise<JSONSchema>;
+  validateAgainstVocabulary(data: any, vocabulary: JSONSchema): Promise<boolean>;
+  cacheVocabulary(uri: string, schema: JSONSchema): Promise<void>;
+}
+
+// Network Port - How VQP communicates
+interface NetworkPort {
+  sendQuery(endpoint: string, query: VQPQuery): Promise<VQPResponse>;
+  broadcastQuery(query: VQPQuery): Promise<VQPResponse[]>;
+  discoverPeers(capability: string): Promise<PeerInfo[]>;
+}
+
+// Audit Port - How VQP logs activities
+interface AuditPort {
+  logQuery(query: VQPQuery, response: VQPResponse): Promise<void>;
+  logError(error: Error, context: any): Promise<void>;
+  getAuditTrail(filters: AuditFilters): Promise<AuditEntry[]>;
+}
+```
+
+### Domain Layer
+
+The core business logic is completely isolated from external concerns:
+
+```typescript
+// Core VQP Service (Domain)
+class VQPService {
+  constructor(
+    private dataAccess: DataAccessPort,
+    private crypto: CryptographicPort,
+    private vocabulary: VocabularyPort,
+    private audit: AuditPort
+  ) {}
+
+  async processQuery(query: VQPQuery): Promise<VQPResponse> {
+    // 1. Validate query structure
+    await this.validateQueryStructure(query);
+    
+    // 2. Resolve and validate vocabulary
+    const vocab = await this.vocabulary.resolveVocabulary(query.query.vocab);
+    await this.vocabulary.validateAgainstVocabulary(query.query.expr, vocab);
+    
+    // 3. Check data access permissions
+    const requiredPaths = this.extractDataPaths(query.query.expr);
+    await this.dataAccess.validateDataAccess(requiredPaths, query.requester);
+    
+    // 4. Evaluate query
+    const data = await this.dataAccess.getData(requiredPaths);
+    const result = this.evaluateJSONLogic(query.query.expr, data);
+    
+    // 5. Generate proof
+    const proof = await this.generateProof(query, result);
+    
+    // 6. Create response
+    const response = this.createResponse(query, result, proof);
+    
+    // 7. Audit logging
+    await this.audit.logQuery(query, response);
+    
+    return response;
+  }
+}
+```
+
+### Adapter Implementations
+
+#### HTTP Transport Adapter
+```typescript
+class HTTPTransportAdapter implements QueryPort {
+  constructor(private vqpService: VQPService) {}
+  
+  async receiveQuery(query: VQPQuery): Promise<VQPResponse> {
+    return await this.vqpService.processQuery(query);
+  }
+  
+  setupExpress(app: Express) {
+    app.post('/vqp/query', async (req, res) => {
+      try {
+        const response = await this.receiveQuery(req.body);
+        res.json(response);
+      } catch (error) {
+        res.status(400).json({ error: error.message });
+      }
+    });
+  }
+}
+```
+
+#### File System Data Adapter
+```typescript
+class FileSystemDataAdapter implements DataAccessPort {
+  constructor(private vaultPath: string) {}
+  
+  async getData(path: string[]): Promise<any> {
+    const vault = await this.loadVault();
+    return this.extractNestedData(vault, path);
+  }
+  
+  async validateDataAccess(path: string[], requester: string): Promise<boolean> {
+    const policies = await this.loadAccessPolicies();
+    return this.checkAccess(policies, path, requester);
+  }
+}
+```
+
+#### Hardware Security Module Crypto Adapter
+```typescript
+class HSMCryptoAdapter implements CryptographicPort {
+  constructor(private hsmClient: HSMClient) {}
+  
+  async sign(data: Buffer, keyId: string): Promise<Signature> {
+    return await this.hsmClient.sign({
+      keyId,
+      data,
+      algorithm: 'Ed25519'
+    });
+  }
+}
+```
+
+### Benefits for VQP
+
+#### 1. Technology Independence
+- **Transport Agnostic**: Switch between HTTP, WebSocket, P2P without changing core logic
+- **Storage Agnostic**: Support file systems, databases, cloud storage, HSMs
+- **Crypto Agnostic**: Support different signature algorithms, ZK proof systems
+
+#### 2. Testing Excellence
+```typescript
+// Easy to test with mock adapters
+describe('VQP Service', () => {
+  it('should process valid queries', async () => {
+    const mockData = new MockDataAdapter({ age: 25 });
+    const mockCrypto = new MockCryptoAdapter();
+    const service = new VQPService(mockData, mockCrypto, ...);
+    
+    const response = await service.processQuery(validQuery);
+    expect(response.result).toBe(true);
+  });
+});
+```
+
+#### 3. Platform Adaptability
+- **Cloud Functions**: Deploy core logic to AWS Lambda, Google Cloud Functions
+- **Containers**: Run in Docker with different adapter configurations
+- **Edge Devices**: Use lightweight adapters for IoT deployments
+- **Enterprise**: Integrate with existing enterprise systems via adapters
+
+#### 4. Evolution Support
+- **New Proof Systems**: Add ZK-STARK adapters without changing core
+- **New Transports**: Support emerging protocols via new adapters
+- **New Storage**: Adapt to new database technologies
+- **Compliance**: Add compliance-specific adapters (GDPR, HIPAA)
+
+### Configuration Examples
+
+#### Development Configuration
+```yaml
+vqp:
+  adapters:
+    transport: http
+    data: filesystem
+    crypto: software
+    vocabulary: http-cache
+    audit: console
+  config:
+    data:
+      vault_path: "./vault.json"
+    crypto:
+      key_path: "./keys/"
+```
+
+#### Production Configuration
+```yaml
+vqp:
+  adapters:
+    transport: https
+    data: encrypted-database
+    crypto: hsm
+    vocabulary: redis-cache
+    audit: elasticsearch
+  config:
+    data:
+      connection_string: "postgres://..."
+      encryption_key_id: "kms://..."
+    crypto:
+      hsm_endpoint: "https://hsm.example.com"
+```
+
+#### Edge/IoT Configuration
+```yaml
+vqp:
+  adapters:
+    transport: websocket
+    data: embedded-storage
+    crypto: embedded-crypto
+    vocabulary: local-cache
+    audit: file
+  config:
+    data:
+      storage_path: "/data/vault"
+    crypto:
+      secure_element: true
+```
+
+This hexagonal architecture ensures that VQP implementations remain consistent, testable, and adaptable across all platforms and use cases.
