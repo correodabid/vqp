@@ -1,0 +1,15 @@
+{
+  "allowed_paths": {
+    "personal.age": ["*"],
+    "personal.citizenship": ["did:web:trusted-service.com"],
+    "personal.has_drivers_license": ["*"],
+    "financial.annual_income": ["did:web:bank.com", "did:web:loan-service.com"],
+    "system.health_status": ["*"],
+    "system.uptime_percentage_24h": ["*"]
+  },
+  "wildcard_paths": {
+    "system.*": ["*"],
+    "personal.email_verified": ["*"]
+  },
+  "default_policy": "deny"
+}

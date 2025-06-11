@@ -89,7 +89,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -145,9 +144,6 @@ venv.bak/
 
 # Output of the go coverage tool
 *.out
-
-# Dependency directories
-vendor/
 
 # Go workspace file
 go.work

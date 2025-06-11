@@ -1,0 +1,20 @@
+{
+  "personal": {
+    "age": 28,
+    "citizenship": "US",
+    "has_drivers_license": true,
+    "email_verified": true
+  },
+  "financial": {
+    "annual_income": 75000,
+    "employment_status": "employed",
+    "employment_duration_months": 24,
+    "has_bank_account": true
+  },
+  "system": {
+    "uptime_percentage_24h": 99.8,
+    "processed_events_last_hour": 1250,
+    "error_rate_percentage": 0.05,
+    "health_status": "healthy"
+  }
+}
