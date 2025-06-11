@@ -5,6 +5,8 @@
 
 // Core domain exports
 export { VQPService } from './domain/vqp-service.js';
+export { VQPVerifier } from './domain/vqp-verifier.js';
+export { VQPQuerier, QueryBuilder } from './domain/vqp-querier.js';
 export * from './domain/types.js';
 export * from './domain/ports/primary.js';
 export * from './domain/ports/secondary.js';

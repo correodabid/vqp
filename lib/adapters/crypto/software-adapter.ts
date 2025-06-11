@@ -37,8 +37,8 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
       const signature = await ed25519.sign(data, keyPair.privateKey);
       
       return {
-        type: 'signature',
-        algorithm: 'ed25519',
+        type: 'signature' as const,
+        algorithm: 'ed25519' as const,
         publicKey: this.bytesToHex(keyPair.publicKey),
         signature: this.bytesToHex(signature)
       };

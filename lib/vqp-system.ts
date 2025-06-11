@@ -4,7 +4,8 @@
  */
 
 import { VQPService } from './domain/vqp-service.js';
-import { VQPError } from './domain/types.js';
+import { VQPVerifier } from './domain/vqp-verifier.js';
+import { VQPError, VQPResponse } from './domain/types.js';
 
 // Adapters
 import { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';
@@ -136,6 +137,21 @@ export class VQPSystem {
    */
   getService(): VQPService {
     return this.vqpService;
+  }
+
+  /**
+   * Create a VQP verifier using the same crypto adapter
+   */
+  createVerifier(): VQPVerifier {
+    return new VQPVerifier(this.cryptoAdapter);
+  }
+
+  /**
+   * Convenience method: verify a VQP response
+   */
+  async verify(response: VQPResponse, originalQueryId?: string): Promise<boolean> {
+    const verifier = this.createVerifier();
+    return await verifier.verify(response);
   }
 
   /**

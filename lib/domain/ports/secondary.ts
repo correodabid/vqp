@@ -43,7 +43,7 @@ export interface VocabularyPort {
 export interface NetworkPort {
   sendQuery(endpoint: string, query: VQPQuery): Promise<VQPResponse>;
   broadcastQuery(query: VQPQuery): Promise<VQPResponse[]>;
-  discoverPeers(capability: string): Promise<string[]>;
+  discoverPeers(capability: string): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>>;
   isReachable(endpoint: string): Promise<boolean>;
 }
 

@@ -67,15 +67,19 @@ export class VQPService {
       // 8. Evaluate query using JSONLogic
       const result = this.evaluateQuery(query.query.expr, data);
 
-      // 9. Generate cryptographic proof
-      const proof = await this.generateProof(query, result);
+      // 9. Generate timestamp for response
+      const responseTimestamp = new Date().toISOString();
+      const responderDID = await this.getResponderDID();
 
-      // 10. Create response
+      // 10. Generate cryptographic proof using the exact same data
+      const proof = await this.generateProof(query, result, responseTimestamp, responderDID);
+
+      // 11. Create response using the same timestamp used in proof
       const response: VQPResponse = {
         queryId: query.id,
         version: query.version,
-        timestamp: new Date().toISOString(),
-        responder: await this.getResponderDID(),
+        timestamp: responseTimestamp,
+        responder: responderDID,
         result,
         proof
       };
@@ -259,12 +263,17 @@ export class VQPService {
   /**
    * Generate cryptographic proof for the response
    */
-  private async generateProof(query: VQPQuery, result: any): Promise<any> {
+  private async generateProof(
+    query: VQPQuery, 
+    result: any, 
+    timestamp: string, 
+    responderDID: string
+  ): Promise<any> {
     const responsePayload = {
       queryId: query.id,
       result,
-      timestamp: new Date().toISOString(),
-      responder: await this.getResponderDID()
+      timestamp,
+      responder: responderDID
     };
 
     const dataToSign = Buffer.from(JSON.stringify(responsePayload));
