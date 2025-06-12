@@ -28,7 +28,14 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
   }
 
   async sign(data: Buffer, keyId: string = 'default'): Promise<Proof> {
-    const keyPair = this.keyPairs.get(keyId);
+    let keyPair = this.keyPairs.get(keyId);
+    
+    // If key doesn't exist and it's the default key, generate it
+    if (!keyPair && keyId === 'default') {
+      await this.addKeyPair('default');
+      keyPair = this.keyPairs.get(keyId);
+    }
+    
     if (!keyPair) {
       throw new Error(`Key not found: ${keyId}`);
     }
@@ -142,19 +149,24 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
   }
 
   /**
-   * Initialize keys from configuration
+   * Initialize keys from configuration (synchronous for configured keys only)
    */
-  private async initializeKeys(): Promise<void> {
+  private initializeKeys(): void {
     if (this.config.keyPairs) {
       for (const [keyId, keyData] of Object.entries(this.config.keyPairs)) {
-        await this.addKeyPair(keyId, keyData.publicKey, keyData.privateKey);
+        try {
+          const pubKey = this.hexToBytes(keyData.publicKey);
+          const privKey = this.hexToBytes(keyData.privateKey);
+          this.keyPairs.set(keyId, {
+            publicKey: pubKey,
+            privateKey: privKey
+          });
+        } catch (error) {
+          throw new Error(`Invalid key pair for ${keyId}: ${error}`);
+        }
       }
     }
-
-    // Ensure default key exists
-    if (!this.keyPairs.has('default')) {
-      await this.addKeyPair('default');
-    }
+    // Default key will be generated lazily when needed
   }
 
   /**
