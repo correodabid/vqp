@@ -1,0 +1,16 @@
+{
+  "reporter": ["text", "html", "lcov"],
+  "check-coverage": false,
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/tests/**",
+    "**/vendor/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/examples/**",
+    "**/tools/**"
+  ],
+  "extension": [".ts"],
+  "all": true
+}

@@ -53,7 +53,19 @@ export interface MultiSignature {
 
 export type Proof = Signature | ZKProof | MultiSignature;
 
-// Error types
+// Error types - both enum and type for backward compatibility
+export enum VQPErrorType {
+  INVALID_QUERY = "INVALID_QUERY",
+  EVALUATION_ERROR = "EVALUATION_ERROR", 
+  SIGNATURE_FAILED = "SIGNATURE_FAILED",
+  VOCABULARY_NOT_FOUND = "VOCABULARY_NOT_FOUND",
+  UNAUTHORIZED = "UNAUTHORIZED",
+  RATE_LIMITED = "RATE_LIMITED",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  CRYPTO_ERROR = "CRYPTO_ERROR",
+  CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
+}
+
 export type VQPErrorCode = 
   | "INVALID_QUERY" 
   | "EVALUATION_ERROR" 
@@ -109,4 +121,127 @@ export interface SystemStatus {
   queriesProcessed: number;
   lastError?: VQPError;
   version: string;
+}
+
+// Validation result type
+export interface ValidationResult {
+  valid: boolean;
+  errors?: string[] | undefined;
+}
+
+// Utility functions
+export function isValidTimestamp(timestamp: string, maxAgeHours: number = 24): boolean {
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = Math.abs(now.getTime() - date.getTime());
+    const diffHours = diffMs / (1000 * 60 * 60);
+    
+    return !isNaN(date.getTime()) && diffHours <= maxAgeHours;
+  } catch {
+    return false;
+  }
+}
+
+export function createVQPError(
+  code: VQPErrorType | VQPErrorCode, 
+  message: string, 
+  details?: Record<string, any>
+): VQPError {
+  return new VQPError(code as VQPErrorCode, message, details);
+}
+
+export function validateVQPQuery(query: any): ValidationResult {
+  const errors: string[] = [];
+  
+  // Basic structure validation
+  if (!query) {
+    errors.push('Query is required');
+    return { valid: false, errors };
+  }
+  
+  if (!query.id || typeof query.id !== 'string') {
+    errors.push('Query ID is required and must be a string');
+  }
+  
+  if (!query.version || query.version !== '1.0.0') {
+    errors.push('Version must be "1.0.0"');
+  }
+  
+  if (!query.timestamp || !isValidTimestamp(query.timestamp)) {
+    errors.push('Valid timestamp is required');
+  }
+  
+  if (!query.requester || typeof query.requester !== 'string') {
+    errors.push('Requester DID is required');
+  }
+  
+  if (!query.query) {
+    errors.push('Query object is required');
+  } else {
+    if (query.query.lang !== 'jsonlogic@1.0.0') {
+      errors.push('Query language must be "jsonlogic@1.0.0"');
+    }
+    
+    if (!query.query.vocab || typeof query.query.vocab !== 'string') {
+      errors.push('Vocabulary is required');
+    }
+    
+    if (!query.query.expr) {
+      errors.push('Query expression is required');
+    }
+  }
+  
+  return { 
+    valid: errors.length === 0, 
+    ...(errors.length > 0 && { errors })
+  };
+}
+
+export function validateVQPResponse(response: any): ValidationResult {
+  const errors: string[] = [];
+  
+  if (!response) {
+    errors.push('Response is required');
+    return { valid: false, errors };
+  }
+  
+  if (!response.queryId || typeof response.queryId !== 'string') {
+    errors.push('Query ID reference is required');
+  }
+  
+  if (!response.version || response.version !== '1.0.0') {
+    errors.push('Version must be "1.0.0"');
+  }
+  
+  if (!response.timestamp || !isValidTimestamp(response.timestamp)) {
+    errors.push('Valid timestamp is required');
+  }
+  
+  if (!response.responder || typeof response.responder !== 'string') {
+    errors.push('Responder DID is required');
+  }
+  
+  if (response.result === undefined || response.result === null) {
+    errors.push('Result is required');
+  }
+  
+  if (!response.proof) {
+    errors.push('Proof is required');
+  } else {
+    if (!response.proof.type || !['signature', 'zk-snark', 'multisig'].includes(response.proof.type)) {
+      errors.push('Proof type must be one of: signature, zk-snark, multisig');
+    }
+    
+    if (response.proof.type === 'signature') {
+      if (!response.proof.algorithm || !response.proof.publicKey || !response.proof.signature) {
+        errors.push('Signature proof requires algorithm, publicKey, and signature');
+      }
+    }
+  }
+  
+  return { 
+    valid: errors.length === 0, 
+    ...(errors.length > 0 && { errors })
+  };
 }

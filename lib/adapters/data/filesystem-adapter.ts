@@ -4,7 +4,6 @@
  */
 
 import { promises as fs } from 'fs';
-import * as path from 'path';
 import { DataAccessPort } from '../../domain/ports/secondary.js';
 
 export interface FileSystemDataConfig {
