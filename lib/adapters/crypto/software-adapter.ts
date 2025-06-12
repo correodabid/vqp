@@ -5,7 +5,7 @@
 
 import * as ed25519 from '@noble/ed25519';
 import { createHash } from 'crypto';
-import { randomBytes } from 'crypto';
+import { pbkdf2Sync } from 'crypto';
 import { CryptographicPort } from '../../domain/ports/secondary.js';
 import { Proof } from '../../domain/types.js';
 
@@ -35,7 +35,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
 
     try {
       const signature = await ed25519.sign(data, keyPair.privateKey);
-      
+
       return {
         type: 'signature' as const,
         algorithm: 'ed25519' as const,
@@ -56,7 +56,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
     try {
       const pubKeyBytes = this.hexToBytes(publicKey);
       const sigBytes = this.hexToBytes(signature.signature);
-      
+
       return await ed25519.verify(sigBytes, data, pubKeyBytes);
     } catch (error) {
       console.error('Signature verification failed:', error);
@@ -75,10 +75,26 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
   }
 
   async deriveKey(input: string, salt?: string): Promise<string> {
-    // Simple key derivation using crypto.randomBytes for demo
-    // In production, use proper KDF like PBKDF2 or Argon2
-    const derivedKey = randomBytes(32);
-    return this.bytesToHex(derivedKey);
+    try {
+      // Use provided salt or generate deterministic salt from input
+      const saltBuffer = salt
+        ? Buffer.from(salt, 'utf8')
+        : createHash('sha256').update(input).digest().slice(0, 16);
+
+      // Use PBKDF2 with SHA-256, 100,000 iterations (NIST recommended minimum)
+      const derivedKey = pbkdf2Sync(
+        input,           // password/input
+        saltBuffer,      // salt
+        100000,          // iterations (NIST recommended minimum)
+        32,              // key length (256 bits)
+        'sha256'         // hash function
+      );
+
+      return this.bytesToHex(derivedKey);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Key derivation failed: ${errorMessage}`);
+    }
   }
 
   /**
@@ -157,7 +173,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
     if (hex.length % 2 !== 0) {
       throw new Error('Invalid hex string length');
     }
-    
+
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
       bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
