@@ -343,7 +343,7 @@ export const handler = async (event) => {
 - [x] Protocol specification v1.0
 - [x] Core vocabularies (identity, financial, health, metrics)
 - [x] TypeScript/JavaScript SDK
-- [ ] Reference CLI tools
+- [x] Reference CLI tools
 
 ### **Phase 2: Ecosystem** (Q3 2025) 🚧
 - [ ] Python & Go SDKs

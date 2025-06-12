@@ -16,10 +16,10 @@ This document outlines the development roadmap for the Verifiable Query Protocol
 - [x] Protocol specification v1.0
 - [x] Core vocabularies (identity, financial, health, metrics)
 - [x] Security model documentation
-- [ ] Reference implementation in TypeScript
-- [ ] Basic CLI tools for query/response
-- [ ] JSON Schema validation
-- [ ] Ed25519 signature support
+- [x] Reference implementation in TypeScript
+- [x] Basic CLI tools for query/response
+- [x] JSON Schema validation
+- [x] Ed25519 signature support
 
 #### Success Criteria
 - Complete protocol specification

@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+// Compile and run the CLI
+require('tsx/cjs').register();
+require('./cli.ts');
