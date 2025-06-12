@@ -7,10 +7,10 @@
 import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import * as assert from 'node:assert/strict';
 import WebSocket from 'ws';
-import { WebSocketTransportAdapter, WebSocketMessage } from '../../lib/adapters/transport/websocket-adapter.js';
-import { VQPService } from '../../lib/domain/vqp-service.js';
-import { VQPQuery, VQPResponse, Proof, Signature } from '../../lib/domain/types.js';
-import { DataAccessPort, CryptographicPort, VocabularyPort, AuditPort } from '../../lib/domain/ports/secondary.js';
+import { WebSocketTransportAdapter, WebSocketMessage } from '../../../../lib/adapters/transport/websocket-adapter.js';
+import { VQPService } from '../../../../lib/domain/vqp-service.js';
+import { VQPQuery, VQPResponse, Proof, Signature } from '../../../../lib/domain/types.js';
+import { DataAccessPort, CryptographicPort, VocabularyPort, AuditPort } from '../../../../lib/domain/ports/secondary.js';
 import { randomUUID } from 'node:crypto';
 
 // Enhanced mock adapters with more realistic behavior

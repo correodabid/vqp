@@ -13,6 +13,7 @@ import { FileSystemDataAdapter, FileSystemDataConfig } from './adapters/data/fil
 import { SoftwareCryptoAdapter, SoftwareCryptoConfig } from './adapters/crypto/software-adapter.js';
 import { HTTPVocabularyAdapter, HTTPVocabularyConfig } from './adapters/vocabulary/http-adapter.js';
 import { ConsoleAuditAdapter, ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
+import { FileAuditAdapter, FileAuditConfig } from './adapters/audit/file-adapter.js';
 
 // Types
 import { QueryPort } from './domain/ports/primary.js';
@@ -41,9 +42,16 @@ export interface VocabularyConfig {
 }
 
 export interface AuditConfig {
-  type: 'console';
+  type: 'console' | 'file';
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   maxEntries?: number;
+  // File-specific options
+  logDirectory?: string;
+  maxFileSize?: number;
+  maxFiles?: number;
+  includeFullQuery?: boolean;
+  includeFullResponse?: boolean;
+  fileNamePattern?: string;
 }
 
 export interface TransportConfig {
@@ -237,14 +245,39 @@ export class VQPSystem {
   private createAuditAdapter(config: AuditConfig): AuditPort {
     switch (config.type) {
       case 'console':
-        const auditConfig: ConsoleAuditConfig = {};
+        const consoleConfig: ConsoleAuditConfig = {};
         if (config.logLevel) {
-          auditConfig.logLevel = config.logLevel;
+          consoleConfig.logLevel = config.logLevel;
         }
         if (config.maxEntries) {
-          auditConfig.maxEntries = config.maxEntries;
+          consoleConfig.maxEntries = config.maxEntries;
         }
-        return new ConsoleAuditAdapter(auditConfig);
+        return new ConsoleAuditAdapter(consoleConfig);
+      
+      case 'file':
+        const fileConfig: FileAuditConfig = {
+          logDirectory: config.logDirectory || './logs/audit'
+        };
+        if (config.logLevel) {
+          fileConfig.logLevel = config.logLevel;
+        }
+        if (config.maxFileSize) {
+          fileConfig.maxFileSize = config.maxFileSize;
+        }
+        if (config.maxFiles) {
+          fileConfig.maxFiles = config.maxFiles;
+        }
+        if (config.includeFullQuery !== undefined) {
+          fileConfig.includeFullQuery = config.includeFullQuery;
+        }
+        if (config.includeFullResponse !== undefined) {
+          fileConfig.includeFullResponse = config.includeFullResponse;
+        }
+        if (config.fileNamePattern) {
+          fileConfig.fileNamePattern = config.fileNamePattern;
+        }
+        return new FileAuditAdapter(fileConfig);
+      
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown audit adapter type: ${config.type}`);
     }

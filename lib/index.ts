@@ -33,6 +33,8 @@ export type { HTTPVocabularyConfig } from './adapters/vocabulary/http-adapter.js
 // Adapters - Audit
 export { ConsoleAuditAdapter } from './adapters/audit/console-adapter.js';
 export type { ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
+export { FileAuditAdapter } from './adapters/audit/file-adapter.js';
+export type { FileAuditConfig } from './adapters/audit/file-adapter.js';
 
 // Vendor exports
 export * from './vendor/jsonlogic.js';
