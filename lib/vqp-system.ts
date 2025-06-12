@@ -14,6 +14,7 @@ import { SoftwareCryptoAdapter, SoftwareCryptoConfig } from './adapters/crypto/s
 import { HTTPVocabularyAdapter, HTTPVocabularyConfig } from './adapters/vocabulary/http-adapter.js';
 import { ConsoleAuditAdapter, ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
 import { FileAuditAdapter, FileAuditConfig } from './adapters/audit/file-adapter.js';
+import { MemoryAuditAdapter, MemoryAuditConfig } from './adapters/audit/memory-adapter.js';
 
 // Types
 import { QueryPort } from './domain/ports/primary.js';
@@ -42,7 +43,7 @@ export interface VocabularyConfig {
 }
 
 export interface AuditConfig {
-  type: 'console' | 'file';
+  type: 'console' | 'file' | 'memory';
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   maxEntries?: number;
   // File-specific options
@@ -52,6 +53,8 @@ export interface AuditConfig {
   includeFullQuery?: boolean;
   includeFullResponse?: boolean;
   fileNamePattern?: string;
+  // Memory-specific options
+  autoCleanup?: boolean;
 }
 
 export interface TransportConfig {
@@ -170,6 +173,13 @@ export class VQPSystem {
   }
 
   /**
+   * Get the audit adapter for direct access
+   */
+  getAuditAdapter(): AuditPort {
+    return this.auditAdapter;
+  }
+
+  /**
    * Get system health status
    */
   async getStatus(): Promise<SystemStatus> {
@@ -277,6 +287,25 @@ export class VQPSystem {
           fileConfig.fileNamePattern = config.fileNamePattern;
         }
         return new FileAuditAdapter(fileConfig);
+      
+      case 'memory':
+        const memoryConfig: MemoryAuditConfig = {};
+        if (config.logLevel) {
+          memoryConfig.logLevel = config.logLevel;
+        }
+        if (config.maxEntries) {
+          memoryConfig.maxEntries = config.maxEntries;
+        }
+        if (config.includeFullQuery !== undefined) {
+          memoryConfig.includeFullQuery = config.includeFullQuery;
+        }
+        if (config.includeFullResponse !== undefined) {
+          memoryConfig.includeFullResponse = config.includeFullResponse;
+        }
+        if (config.autoCleanup !== undefined) {
+          memoryConfig.autoCleanup = config.autoCleanup;
+        }
+        return new MemoryAuditAdapter(memoryConfig);
       
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown audit adapter type: ${config.type}`);

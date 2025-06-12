@@ -35,6 +35,8 @@ export { ConsoleAuditAdapter } from './adapters/audit/console-adapter.js';
 export type { ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
 export { FileAuditAdapter } from './adapters/audit/file-adapter.js';
 export type { FileAuditConfig } from './adapters/audit/file-adapter.js';
+export { MemoryAuditAdapter } from './adapters/audit/memory-adapter.js';
+export type { MemoryAuditConfig } from './adapters/audit/memory-adapter.js';
 
 // Vendor exports
 export * from './vendor/jsonlogic.js';
