@@ -231,9 +231,9 @@ if (await querier.verify(response)) {
 
 | Language | Status | Installation |
 |----------|--------|-------------|
-| **TypeScript/JavaScript** | ✅ Ready | `npm install @vqp/core` |
-| **Python** | ✅ Ready | `pip install vqp-core` |
-| **Go** | ✅ Ready | `go get github.com/vqp-protocol/vqp-go` |
+| **TypeScript/JavaScript** | 🚧 Coming | `npm install @vqp/core` |
+| **Python** | 🚧 Coming | `pip install vqp-core` |
+| **Go** | 🚧 Coming | `go get github.com/vqp-protocol/vqp-go` |
 | **Rust** | 🚧 Coming | `cargo add vqp-core` |
 
 </div>
@@ -347,7 +347,7 @@ export const handler = async (event) => {
 
 ### **Phase 2: Ecosystem** (Q3 2025) 🚧
 - [ ] Python & Go SDKs
-- [ ] ZK-SNARK proof system
+- [x] ZK-SNARK proof system
 - [ ] Cloud provider integrations
 - [ ] Performance optimizations
 

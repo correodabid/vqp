@@ -50,7 +50,7 @@ This document outlines the development roadmap for the Verifiable Query Protocol
 **Target**: Zero-knowledge proofs and advanced cryptography
 
 #### Deliverables
-- [ ] ZK-SNARK proof generation
+- [x] ZK-SNARK proof generation
 - [ ] Bulletproof range proofs
 - [ ] Multi-signature support
 - [ ] Hardware wallet integration
