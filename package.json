@@ -2,6 +2,7 @@
   "name": "@vqp/protocol",
   "version": "1.0.0",
   "description": "Verifiable Query Protocol - Privacy-preserving, verifiable queries over private data",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

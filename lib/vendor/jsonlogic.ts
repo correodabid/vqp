@@ -3,6 +3,9 @@
  * This provides type safety for the JSONLogic library
  */
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 // Import the vendored JavaScript file
 const jsonlogic = require('../../vendor/jsonlogic-js/logic.js');
 

@@ -105,7 +105,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
     // Check exact path match
     if (policies.allowed_paths && policies.allowed_paths[pathString]) {
       const allowedRequesters = policies.allowed_paths[pathString];
-      return allowedRequesters.includes('*') || allowedRequesters.includes(requester);
+      return allowedRequesters?.includes('*') || allowedRequesters?.includes(requester) || false;
     }
 
     // Check wildcard matches
@@ -365,7 +365,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
     // Check exact path
     if (policies.allowed_paths && policies.allowed_paths[pathString]) {
       const allowedRequesters = policies.allowed_paths[pathString];
-      return allowedRequesters.includes('*') || allowedRequesters.includes(requester);
+      return allowedRequesters?.includes('*') || allowedRequesters?.includes(requester) || false;
     }
     
     // Check wildcards
@@ -408,7 +408,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
     this.accessCounts.set(requester, accessData);
 
     // Check per-minute limit
-    if (limits.requests_per_minute && accessData.count > limits.requests_per_minute) {
+    if (limits?.requests_per_minute && accessData.count > limits.requests_per_minute) {
       return false;
     }
 
