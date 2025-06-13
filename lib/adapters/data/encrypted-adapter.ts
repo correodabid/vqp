@@ -10,7 +10,7 @@ import {
   createHash,
   pbkdf2Sync,
   DecipherGCM,
-} from 'crypto';
+} from 'node:crypto';
 import { promises as fs } from 'fs';
 import { DataAccessPort } from '../../domain/ports/secondary.js';
 

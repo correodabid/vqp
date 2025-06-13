@@ -5,11 +5,13 @@
 
 import { VQPService } from './domain/vqp-service.js';
 import { VQPVerifier } from './domain/vqp-verifier.js';
+import { VQPQuerier } from './domain/vqp-querier.js';
 import { VQPError, VQPResponse } from './domain/types.js';
 
 // Adapters
 import { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';
 import { MemoryTransportAdapter } from './adapters/transport/memory-adapter.js';
+import { WebSocketTransportAdapter } from './adapters/transport/websocket-adapter.js';
 import { FileSystemDataAdapter, FileSystemDataConfig } from './adapters/data/filesystem-adapter.js';
 import { SoftwareCryptoAdapter, SoftwareCryptoConfig } from './adapters/crypto/software-adapter.js';
 import { SnarkjsCryptoAdapter, SnarkjsConfig } from './adapters/crypto/snarkjs-adapter.js';
@@ -25,6 +27,7 @@ import {
   CryptographicPort,
   VocabularyPort,
   AuditPort,
+  NetworkPort,
 } from './domain/ports/secondary.js';
 
 export interface DataConfig {
@@ -426,4 +429,89 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
   }
 
   return new VQPSystem(config);
+}
+
+/**
+ * Simple configuration interface for creating a VQPQuerier
+ */
+export interface VQPQuerierConfig {
+  identity: string;
+  crypto?: {
+    type?: 'software';
+    keyPath?: string;
+  };
+  network?: {
+    type?: 'websocket';
+    timeout?: number;
+  };
+}
+
+/**
+ * Factory function to create a VQPQuerier with simple configuration
+ * This provides an easier API than using the constructor directly
+ */
+export function createVQPQuerier(config: VQPQuerierConfig): VQPQuerier {
+  // Create default crypto adapter (software-based)
+  const cryptoConfig: CryptoConfig = {
+    type: 'software',
+    ...config.crypto,
+  };
+
+  // Create default network adapter (WebSocket-based)
+  const networkConfig = {
+    type: 'websocket' as const,
+    timeout: 30000,
+    ...config.network,
+  };
+
+  const cryptoAdapter = createCryptoAdapterHelper(cryptoConfig);
+  const networkAdapter = createNetworkAdapter(networkConfig);
+
+  return new VQPQuerier(networkAdapter, cryptoAdapter, config.identity);
+}
+
+/**
+ * Helper function to create crypto adapter (reuse existing logic)
+ */
+function createCryptoAdapterHelper(config: CryptoConfig): CryptographicPort {
+  switch (config.type) {
+    case 'software': {
+      const cryptoConfig: SoftwareCryptoConfig = {};
+      if (config.keyPairs) {
+        cryptoConfig.keyPairs = config.keyPairs;
+      }
+      return new SoftwareCryptoAdapter(cryptoConfig);
+    }
+    case 'snarkjs': {
+      const zkConfig: SnarkjsConfig = config.config || {};
+      if (config.keyPairs) {
+        zkConfig.keyPairs = config.keyPairs;
+      }
+      return new SnarkjsCryptoAdapter(zkConfig);
+    }
+    default:
+      throw new VQPError('CONFIGURATION_ERROR', `Unknown crypto adapter type: ${config.type}`);
+  }
+}
+
+/**
+ * Helper function to create network adapter
+ */
+function createNetworkAdapter(config: { type: 'websocket'; timeout?: number }): NetworkPort {
+  switch (config.type) {
+    case 'websocket':
+      return new WebSocketTransportAdapter(
+        // Dummy VQP service - this won't be used for client-side operations
+        {
+          processQuery: async () => {
+            throw new Error('Client-side adapter');
+          },
+        },
+        {
+          connectionTimeout: config.timeout || 30000,
+        }
+      );
+    default:
+      throw new Error(`Unsupported network adapter type: ${config.type}`);
+  }
 }

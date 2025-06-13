@@ -8,11 +8,13 @@
     "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
     "removeComments": false,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -20,19 +22,28 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "resolveJsonModule": true,
-    "typeRoots": ["./types", "./node_modules/@types"]
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["lib/*"]
+    }
   },
   "include": [
     "lib/**/*",
-    "examples/**/*",
-    "types/**/*"
+    "examples/**/*", 
+    "tools/**/*",
+    "types/**/*",
+    "crypto.ts",
+    "transport.ts", 
+    "data.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "tests",
-    "packages",
-    "tools",
-    "vendor"
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "coverage",
+    "circuits"
   ]
 }

@@ -8,6 +8,10 @@ import { Server } from 'http';
 import { QueryPort } from '../../domain/ports/primary.js';
 import { VQPQuery, VQPResponse, VQPError } from '../../domain/types.js';
 
+export interface HTTPTransportConfig {
+  // No configuration needed for HTTP transport
+}
+
 export class HTTPTransportAdapter implements QueryPort {
   private app: Application;
   private server?: Server;

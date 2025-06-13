@@ -1,6 +1,6 @@
-import { VQPQuery, VQPResponse } from './types';
-import { VQPVerifier } from './vqp-verifier';
-import { CryptographicPort, NetworkPort } from './ports/secondary';
+import { VQPQuery, VQPResponse } from './types.js';
+import { VQPVerifier } from './vqp-verifier.js';
+import { CryptographicPort, NetworkPort } from './ports/secondary.js';
 
 /**
  * VQP Querier - High-level client for sending queries and verifying responses

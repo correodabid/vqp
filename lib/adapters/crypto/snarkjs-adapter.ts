@@ -43,7 +43,7 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
    */
   async generateZKProof(circuitId: string, inputs: any, publicInputs?: any): Promise<Proof> {
     await this.ensureSnarkjsLoaded();
-    
+
     const circuit = this.circuits.get(circuitId);
     if (!circuit) {
       throw new Error(`Circuit not found: ${circuitId}`);
@@ -54,12 +54,12 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
       let publicSignals: any;
 
       if (circuit.provingSystem === 'groth16') {
-        const { proof: groth16Proof, publicSignals: groth16Signals } = 
+        const { proof: groth16Proof, publicSignals: groth16Signals } =
           await this.snarkjs.groth16.fullProve(inputs, circuit.wasmPath, circuit.zkeyPath);
         proof = groth16Proof;
         publicSignals = groth16Signals;
       } else if (circuit.provingSystem === 'plonk') {
-        const { proof: plonkProof, publicSignals: plonkSignals } = 
+        const { proof: plonkProof, publicSignals: plonkSignals } =
           await this.snarkjs.plonk.fullProve(inputs, circuit.wasmPath, circuit.zkeyPath);
         proof = plonkProof;
         publicSignals = plonkSignals;
@@ -99,15 +99,14 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
     const zkProof = proof as ZKProof;
     const targetCircuitId = circuitId || zkProof.circuit;
     const circuit = this.circuits.get(targetCircuitId);
-    
+
     if (!circuit) {
       throw new Error(`Circuit not found: ${targetCircuitId}`);
     }
 
     try {
-      const proofObject = typeof zkProof.proof === 'string' 
-        ? JSON.parse(zkProof.proof) 
-        : zkProof.proof;
+      const proofObject =
+        typeof zkProof.proof === 'string' ? JSON.parse(zkProof.proof) : zkProof.proof;
 
       const publicSignals = this.extractPublicSignals(zkProof.publicInputs, publicInputs);
 
@@ -118,8 +117,8 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
           throw new Error(`Verification key not loaded for circuit: ${targetCircuitId}`);
         }
         isValid = await this.snarkjs.groth16.verify(
-          circuit.verificationKey, 
-          publicSignals, 
+          circuit.verificationKey,
+          publicSignals,
           proofObject
         );
       } else if (circuit.provingSystem === 'plonk') {
@@ -127,8 +126,8 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
           throw new Error(`Verification key not loaded for circuit: ${targetCircuitId}`);
         }
         isValid = await this.snarkjs.plonk.verify(
-          circuit.verificationKey, 
-          publicSignals, 
+          circuit.verificationKey,
+          publicSignals,
           proofObject
         );
       } else {
@@ -148,7 +147,7 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
   async loadCircuit(circuitPath: string): Promise<void> {
     // Circuit path format: "circuitId:wasmPath:zkeyPath:vkeyPath"
     const [circuitId, wasmPath, zkeyPath, vkeyPath] = circuitPath.split(':');
-    
+
     if (!circuitId || !wasmPath || !zkeyPath) {
       throw new Error('Invalid circuit path format. Expected: "id:wasm:zkey:vkey"');
     }
@@ -200,7 +199,7 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
       try {
         const circuitPath = `${circuitId}:${config.wasmPath}:${config.zkeyPath}:${config.verificationKeyPath || ''}`;
         await this.loadCircuit(circuitPath);
-        
+
         // Set proving system if specified
         const circuit = this.circuits.get(circuitId);
         if (circuit && config.provingSystem) {
@@ -224,7 +223,7 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
     } catch (error) {
       throw new Error(
         'snarkjs not available. Install with: npm install snarkjs\n' +
-        'Note: snarkjs requires Node.js environment for file system access.'
+          'Note: snarkjs requires Node.js environment for file system access.'
       );
     }
   }
@@ -246,14 +245,14 @@ export class SnarkjsCryptoAdapter extends SoftwareCryptoAdapter implements Crypt
     if (providedInputs && Array.isArray(providedInputs)) {
       return providedInputs;
     }
-    
+
     if (storedInputs.publicSignals && Array.isArray(storedInputs.publicSignals)) {
       return storedInputs.publicSignals;
     }
 
     // Fallback: convert object values to array
-    return Object.values(storedInputs).filter(val => 
-      typeof val === 'number' || typeof val === 'string'
+    return Object.values(storedInputs).filter(
+      (val) => typeof val === 'number' || typeof val === 'string'
     );
   }
 }

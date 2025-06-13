@@ -4,8 +4,7 @@
  */
 
 import * as ed25519 from '@noble/ed25519';
-import { createHash } from 'crypto';
-import { pbkdf2Sync } from 'crypto';
+import { createHash, pbkdf2Sync } from 'node:crypto';
 import { CryptographicPort } from '../../domain/ports/secondary.js';
 import { Proof } from '../../domain/types.js';
 

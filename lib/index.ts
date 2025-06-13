@@ -12,8 +12,8 @@ export * from './domain/ports/primary.js';
 export * from './domain/ports/secondary.js';
 
 // System assembly
-export { VQPSystem, createVQPSystem } from './vqp-system.js';
-export type { VQPSystemConfig } from './vqp-system.js';
+export { VQPSystem, createVQPSystem, createVQPQuerier } from './vqp-system.js';
+export type { VQPSystemConfig, VQPQuerierConfig } from './vqp-system.js';
 
 // Adapters - Transport
 export { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';

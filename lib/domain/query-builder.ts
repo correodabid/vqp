@@ -40,7 +40,7 @@ export class QueryBuilder {
       this.query.query = {
         lang: 'jsonlogic@1.0.0',
         vocab: vocabUri,
-        expr: {}
+        expr: {},
       };
     } else {
       this.query.query.vocab = vocabUri;
@@ -56,7 +56,7 @@ export class QueryBuilder {
       this.query.query = {
         lang: 'jsonlogic@1.0.0',
         vocab: '',
-        expr: expr
+        expr: expr,
       };
     } else {
       this.query.query.expr = expr;
@@ -88,7 +88,7 @@ export class QueryBuilder {
       this.query.query = {
         lang: lang,
         vocab: '',
-        expr: {}
+        expr: {},
       };
     } else {
       this.query.query.lang = lang;
@@ -119,7 +119,7 @@ export class QueryBuilder {
       .requester(requester)
       .vocabulary('vqp:identity:v1')
       .expression({
-        ">=": [{ "var": "age" }, minAge]
+        '>=': [{ var: 'age' }, minAge],
       });
 
     if (target) {
@@ -137,7 +137,7 @@ export class QueryBuilder {
       .requester(requester)
       .vocabulary('vqp:identity:v1')
       .expression({
-        "==": [{ "var": "citizenship" }, country]
+        '==': [{ var: 'citizenship' }, country],
       });
 
     if (target) {
@@ -155,7 +155,7 @@ export class QueryBuilder {
       .requester(requester)
       .vocabulary('vqp:financial:v1')
       .expression({
-        ">=": [{ "var": "annual_income" }, minIncome]
+        '>=': [{ var: 'annual_income' }, minIncome],
       });
 
     if (target) {
@@ -173,11 +173,11 @@ export class QueryBuilder {
       .requester(requester)
       .vocabulary('vqp:metrics:v1')
       .expression({
-        "and": [
-          { ">=": [{ "var": "uptime_percentage_24h" }, 99.0] },
-          { "<=": [{ "var": "response_time_p95_ms" }, 500] },
-          { "==": [{ "var": "health_status" }, "healthy"] }
-        ]
+        and: [
+          { '>=': [{ var: 'uptime_percentage_24h' }, 99.0] },
+          { '<=': [{ var: 'response_time_p95_ms' }, 500] },
+          { '==': [{ var: 'health_status' }, 'healthy'] },
+        ],
       });
 
     if (target) {

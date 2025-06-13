@@ -1,47 +1,98 @@
 {
-  "name": "@vqp/protocol",
-  "version": "1.0.0",
-  "description": "Verifiable Query Protocol - Privacy-preserving, verifiable queries over private data",
+  "name": "@vqp/core",
+  "version": "0.0.1",
+  "description": "Verifiable Query Protocol - Privacy-preserving, verifiable queries over private data with cryptographically verifiable responses",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "vqp": "./tools/vqp"
+  "main": "dist/lib/index.js",
+  "module": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/lib/index.js",
+      "types": "./dist/lib/index.d.ts"
+    },
+    "./crypto": {
+      "import": "./dist/crypto.js",
+      "types": "./dist/crypto.d.ts"
+    },
+    "./transport": {
+      "import": "./dist/transport.js",
+      "types": "./dist/transport.d.ts"
+    },
+    "./data": {
+      "import": "./dist/data.js",
+      "types": "./dist/data.d.ts"
+    }
   },
+  "bin": {
+    "vqp": "dist/tools/vqp.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "node --test --import tsx tests/unit/adapters/crypto/crypto-adapter.test.ts tests/unit/adapters/transport/websocket-adapter.test.ts tests/unit/adapters/encrypted-data-adapter.test.ts tests/unit/adapters/audit/memory-adapter.test.ts tests/unit/adapters/audit/file-adapter.test.ts tests/unit/domain/types.test.ts tests/unit/domain/vqp-service.test.ts tests/unit/adapters/crypto/snarkjs-adapter.test.ts tests/integration/vqp-system.test.ts tests/integration/e2e-flow.test.ts tests/integration/comprehensive-flow.test.ts",
-    "test:new": "find tests -name '*.test.js' -exec node {} \\;",
-    "test:watch": "node --test --watch --import tsx tests/unit/**/*.test.ts tests/integration/**/*.test.ts",
-    "test:coverage": "c8 node --test --import tsx tests/unit/**/*.test.ts tests/integration/**/*.test.ts",
-    "lint": "eslint 'lib/**/*.ts' 'tests/**/*.ts'",
-    "lint:fix": "eslint 'lib/**/*.ts' 'tests/**/*.ts' --fix",
-    "format": "prettier --write 'lib/**/*.ts' 'tests/**/*.ts'",
-    "prepare": "npm run build",
-    "docs:build": "typedoc",
-    "start": "npm run build && cp -r vendor dist/ && node dist/examples/basic-example.js",
-    "cli": "npx tsx tools/cli.ts",
-    "examples": "npm run start",
-    "zk:setup": "bash tools/setup-snarkjs.sh",
-    "zk:compile": "bash tools/compile-circuits.sh",
-    "zk:example": "npm run build && npx tsx examples/zk-proof-example.ts",
-    "zk:demo": "npm run build && npx tsx examples/complete-zk-example.ts",
-    "zk:test": "npm run build && node --test tests/unit/adapters/crypto/snarkjs-adapter.test.ts"
+    "build": "npm run clean && node esbuild.config.js",
+    "build:dev": "npm run clean && node esbuild.config.js --watch",
+    "build:types": "tsc --emitDeclarationOnly --declaration",
+    "clean": "rm -rf dist",
+    "copy-assets": "cp -r vendor dist/ && cp tools/vqp dist/tools/ && chmod +x dist/tools/vqp",
+    "test": "node --test --import tsx $(find tests -name '*.test.ts')",
+    "test:unit": "node --test --import tsx $(find tests/unit -name '*.test.ts')",
+    "test:integration": "node --test --import tsx $(find tests/integration -name '*.test.ts')",
+    "test:watch": "node --test --watch --import tsx $(find tests -name '*.test.ts')",
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov node --test --import tsx $(find tests -name '*.test.ts')",
+    "lint": "eslint 'lib/**/*.ts' 'tests/**/*.ts' 'tools/**/*.ts'",
+    "lint:fix": "eslint 'lib/**/*.ts' 'tests/**/*.ts' 'tools/**/*.ts' --fix",
+    "format": "prettier --write 'lib/**/*.ts' 'tests/**/*.ts' 'tools/**/*.ts'",
+    "format:check": "prettier --check 'lib/**/*.ts' 'tests/**/*.ts' 'tools/**/*.ts'",
+    "prepublishOnly": "npm run build && npm run copy-assets && npm run test && npm run lint",
+    "prepare": "husky install || true",
+    "docs:build": "typedoc --out docs/api lib/index.ts",
+    "docs:serve": "npx http-server docs/api -p 8080",
+    "examples:basic": "npm run build && node dist/examples/basic-example.js",
+    "examples:zk": "npm run build && node dist/examples/zk-proof-example.js",
+    "examples:complete": "npm run build && node dist/examples/complete-example.js",
+    "cli": "npm run build && node dist/tools/cli.js",
+    "benchmark": "npm run build && node dist/tools/benchmark.js",
+    "release": "npm run prepublishOnly && npm publish",
+    "release:beta": "npm run prepublishOnly && npm publish --tag beta"
   },
   "keywords": [
-    "privacy",
+    "privacy-preserving",
     "verification",
     "cryptography",
     "zero-knowledge",
     "protocol",
-    "hexagonal-architecture"
+    "hexagonal-architecture",
+    "data-sovereignty",
+    "verifiable-queries",
+    "privacy",
+    "decentralized",
+    "trust",
+    "compliance",
+    "identity-verification",
+    "financial-verification"
   ],
-  "author": "VQP Contributors",
+  "author": "VQP Contributors <hello@vqp-protocol.org>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vqp-protocol/vqp.git"
+    "url": "https://github.com/correodabid/vqp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/correodabid/vqp/issues"
+  },
+  "homepage": "https://vqp-protocol.org",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/vqp-protocol"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "dependencies": {
     "@noble/ed25519": "^2.3.0",
@@ -63,15 +114,28 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "c8": "^9.1.0",
+    "esbuild": "^0.25.5",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
     "prettier": "^3.5.3",
     "tsx": "^4.20.2",
     "typedoc": "^0.25.13",
+    "typedoc-plugin-extras": "^3.1.0",
     "typescript": "^5.4.5"
   },
-  "workspaces": [
-    "packages/*"
-  ]
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

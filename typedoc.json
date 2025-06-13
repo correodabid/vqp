@@ -1,0 +1,51 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "@vqp/core - VQP API Documentation",
+  "entryPoints": ["lib/index.ts"],
+  "out": "docs/api",
+  "theme": "default",
+  "readme": "README.md",
+  "tsconfig": "tsconfig.json",
+  "exclude": [
+    "**/*.test.ts",
+    "**/tests/**/*",
+    "**/examples/**/*", 
+    "**/tools/**/*",
+    "**/scripts/**/*",
+    "**/vendor/**/*"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": false,
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Core",
+    "Adapters", 
+    "Transport",
+    "Crypto",
+    "Data", 
+    "Audit",
+    "Vocabulary",
+    "Types",
+    "*"
+  ],
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Class",
+    "Interface",
+    "TypeAlias", 
+    "Function",
+    "Variable"
+  ],
+  "navigationLinks": {
+    "GitHub": "https://github.com/correodabid/vqp",
+    "Documentation": "https://vqp-protocol.org"
+  },
+  "sidebarLinks": {
+    "Protocol Specification": "https://vqp-protocol.org/docs/spec",
+    "Integration Guide": "https://vqp-protocol.org/docs/integration-guide",
+    "Use Cases": "https://vqp-protocol.org/docs/use-cases"
+  }
+}

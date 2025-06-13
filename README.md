@@ -48,6 +48,177 @@ With VQP, verification becomes sovereign:
 
 ---
 
+## 📦 Installation
+
+```bash
+# Install the core VQP library
+npm install @vqp/core
+
+# Or with yarn
+yarn add @vqp/core
+
+# Or with pnpm  
+pnpm add @vqp/core
+```
+
+### Requirements
+
+- **Node.js**: >= 18.0.0
+- **TypeScript**: >= 5.0.0 (optional but recommended)
+
+### API Documentation
+
+Complete API documentation is generated with TypeDoc and available at:
+- **Online**: [https://vqp.dev/api](https://vqp.dev/api)
+- **Local**: Generate with `npm run docs:build` and open `docs/api/index.html`
+
+### Subpath Exports
+
+VQP supports modular imports for tree-shaking optimization:
+```typescript
+import { SoftwareCryptoAdapter } from '@vqp/core/crypto';     // Crypto adapters
+import { HTTPTransportAdapter } from '@vqp/core/transport';  // Transport adapters  
+import { FileSystemDataAdapter } from '@vqp/core/data';      // Data adapters
+```
+
+---
+
+## ⚡ Quick Start
+
+```typescript
+import { createVQPSystem, createVQPQuerier, QueryBuilder } from '@vqp/core';
+
+// 1. Create a VQP responder (data owner)
+const vqpSystem = createVQPSystem({
+  data: { type: 'filesystem', vaultPath: './vault.json' },
+  crypto: { type: 'software' },
+  vocabulary: { type: 'http', allowedVocabularies: ['vqp:identity:v1'] },
+  transport: { type: 'http', port: 8080 }
+});
+
+await vqpSystem.start();
+
+// 2. Create a querier and ask questions
+const querier = createVQPQuerier({
+  identity: 'did:web:my-service.com',
+  network: { type: 'websocket' }
+});
+
+// 3. Build and send a query (without seeing the actual data!)
+const query = new QueryBuilder()
+  .vocabulary('vqp:identity:v1')
+  .expression({ '>=': [{ 'var': 'age' }, 18] })
+  .requester('did:web:my-service.com')
+  .build();
+
+const response = await querier.query('ws://localhost:8080/vqp', query);
+
+if (await querier.verify(response)) {
+  console.log('✅ Person is 18+ (verified cryptographically!)');
+}
+```
+
+---
+
+## 🔧 Advanced Usage
+
+### Modular Architecture with Subpath Imports
+
+VQP follows hexagonal architecture and provides modular adapters. You can import specific components:
+
+```typescript
+// Import specific crypto adapters
+import { SoftwareCryptoAdapter, SnarkjsCryptoAdapter } from '@vqp/core/crypto';
+
+// Import transport adapters  
+import { HTTPTransportAdapter, MemoryTransportAdapter } from '@vqp/core/transport';
+
+// Import data adapters
+import { FileSystemDataAdapter, EncryptedDataAdapter } from '@vqp/core/data';
+
+// Build custom VQP system with specific adapters
+const vqpSystem = createVQPSystem({
+  data: { 
+    adapter: new EncryptedDataAdapter({
+      vaultPath: './encrypted-vault.json',
+      encryptionKey: process.env.VAULT_KEY
+    })
+  },
+  crypto: { 
+    adapter: new SoftwareCryptoAdapter({
+      keyPath: './keys/private.key'
+    })
+  },
+  transport: { 
+    adapter: new HTTPTransportAdapter({
+      port: 8080,
+      cors: { origin: 'https://trusted-app.com' }
+    })
+  }
+});
+```
+
+### Zero-Knowledge Proofs
+
+For maximum privacy, use ZK-SNARK proofs that prove statements without revealing underlying data:
+
+```typescript
+import { SnarkjsCryptoAdapter } from '@vqp/core/crypto';
+
+// Use ZK proofs for maximum privacy
+const zkCrypto = new SnarkjsCryptoAdapter({
+  circuitPath: './circuits/age_verification.r1cs',
+  provingKeyPath: './circuits/proving.key',
+  verificationKeyPath: './circuits/verification.key'
+});
+
+const privateVQP = createVQPSystem({
+  crypto: zkCrypto,
+  // ... other adapters
+});
+
+// Age verification with ZK proof
+const zkResponse = await querier.query(endpoint, {
+  vocab: 'vqp:identity:v1',
+  expr: { '>=': [{ 'var': 'age' }, 21] }
+});
+
+// Response includes ZK proof instead of signature
+console.log(zkResponse.proof.type); // 'zk-snark'
+```
+
+### Custom Vocabularies
+
+```typescript
+// Define custom vocabulary for your domain
+const customVocab = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "security_clearance": {
+      "type": "string",
+      "enum": ["public", "secret", "top_secret"]
+    },
+    "years_experience": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+};
+
+// Query using custom vocabulary
+const response = await querier.query(endpoint, {
+  vocab: 'https://mycompany.com/vqp/vocab/hr/v1',
+  expr: {
+    "and": [
+      { ">=": [{ "var": "security_clearance" }, "secret"] },
+      { ">=": [{ "var": "years_experience" }, 5] }
+    ]
+  }
+});
+```
+
+---
+
 ## ⚡ Mind-Blowing Use Cases
 
 <table>
