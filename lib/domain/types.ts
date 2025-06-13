@@ -35,10 +35,17 @@ export interface Signature {
 }
 
 export interface ZKProof {
-  type: 'zk-snark';
+  type: 'zk-snark' | 'zk-stark' | 'bulletproof';
   circuit: string; // Circuit identifier
-  proof: string; // Base64 encoded proof
+  proof: string | object; // Base64 encoded proof or snarkjs proof object
   publicInputs: Record<string, any>;
+  // Additional metadata for snarkjs compatibility
+  metadata?: {
+    provingSystem?: 'groth16' | 'plonk' | 'bulletproof';
+    curve?: 'bn254' | 'bls12-381';
+    circuitHash?: string; // Hash of the circuit for verification
+    proofFormat?: 'snarkjs' | 'base64' | 'hex';
+  };
 }
 
 export interface MultiSignature {
@@ -75,7 +82,8 @@ export type VQPErrorCode =
   | 'RATE_LIMITED'
   | 'NETWORK_ERROR'
   | 'CRYPTO_ERROR'
-  | 'CONFIGURATION_ERROR';
+  | 'CONFIGURATION_ERROR'
+  | 'PROCESSING_ERROR';
 
 export class VQPError extends Error {
   public readonly code: VQPErrorCode;

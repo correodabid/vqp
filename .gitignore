@@ -364,3 +364,6 @@ site/
 *.old
 *.orig
 *.save
+
+proof_age_verification_*.json
+circuits

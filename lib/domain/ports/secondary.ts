@@ -22,9 +22,15 @@ export interface CryptographicPort {
   verify(signature: Proof, data: Buffer, publicKey: string): Promise<boolean>;
   generateKeyPair(): Promise<{ publicKey: string; privateKey: string }>;
   deriveKey(input: string, salt?: string): Promise<string>;
-  // ZK Proof support
-  generateZKProof?(circuit: string, inputs: any): Promise<Proof>;
-  verifyZKProof?(proof: Proof, publicInputs: any): Promise<boolean>;
+  
+  // ZK Proof support (optional - for advanced crypto adapters)
+  generateZKProof?(circuit: string, inputs: any, publicInputs?: any): Promise<Proof>;
+  verifyZKProof?(proof: Proof, publicInputs: any, circuit?: string): Promise<boolean>;
+  
+  // Circuit management (for snarkjs integration)
+  loadCircuit?(circuitPath: string): Promise<void>;
+  hasCircuit?(circuitId: string): Promise<boolean>;
+  listCircuits?(): Promise<string[]>;
 }
 
 /**

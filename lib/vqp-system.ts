@@ -9,8 +9,10 @@ import { VQPError, VQPResponse } from './domain/types.js';
 
 // Adapters
 import { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';
+import { MemoryTransportAdapter } from './adapters/transport/memory-adapter.js';
 import { FileSystemDataAdapter, FileSystemDataConfig } from './adapters/data/filesystem-adapter.js';
 import { SoftwareCryptoAdapter, SoftwareCryptoConfig } from './adapters/crypto/software-adapter.js';
+import { SnarkjsCryptoAdapter, SnarkjsConfig } from './adapters/crypto/snarkjs-adapter.js';
 import { HTTPVocabularyAdapter, HTTPVocabularyConfig } from './adapters/vocabulary/http-adapter.js';
 import { ConsoleAuditAdapter, ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
 import { FileAuditAdapter, FileAuditConfig } from './adapters/audit/file-adapter.js';
@@ -26,20 +28,23 @@ import {
 } from './domain/ports/secondary.js';
 
 export interface DataConfig {
-  type: 'filesystem';
-  vaultPath: string;
+  type: 'filesystem' | 'memory';
+  vaultPath?: string;
   policiesPath?: string;
+  config?: any; // Allow additional configuration
 }
 
 export interface CryptoConfig {
-  type: 'software';
+  type: 'software' | 'snarkjs';
   keyPairs?: Record<string, { publicKey: string; privateKey: string }>;
+  config?: any; // Allow additional configuration for ZK circuits
 }
 
 export interface VocabularyConfig {
   type: 'http';
   allowedVocabularies?: string[];
   cacheTimeoutMs?: number;
+  config?: any; // Allow additional configuration
 }
 
 export interface AuditConfig {
@@ -55,14 +60,16 @@ export interface AuditConfig {
   fileNamePattern?: string;
   // Memory-specific options
   autoCleanup?: boolean;
+  config?: any; // Allow additional configuration
 }
 
 export interface TransportConfig {
-  type: 'http';
+  type: 'http' | 'memory';
   port?: number;
   corsOrigins?: string[];
   rateLimitWindowMs?: number;
   rateLimitMax?: number;
+  config?: any; // Allow additional configuration
 }
 
 export interface VQPSystemConfig {
@@ -114,6 +121,15 @@ export class VQPSystem {
 
     // Create transport adapter (primary adapter)
     this.transportAdapter = this.createTransportAdapter(config.transport);
+  }
+
+  /**
+   * Initialize the VQP system (async operations)
+   */
+  async initialize(): Promise<void> {
+    // Any async initialization can be done here
+    // For now, just a simple ready message
+    console.log('✅ VQP System initialized');
   }
 
   /**
@@ -203,7 +219,7 @@ export class VQPSystem {
     switch (config.type) {
       case 'filesystem': {
         const fsConfig: FileSystemDataConfig = {
-          vaultPath: config.vaultPath,
+          vaultPath: config.vaultPath || './examples/sample-vault.json',
         };
         if (config.policiesPath) {
           fsConfig.policiesPath = config.policiesPath;
@@ -226,6 +242,13 @@ export class VQPSystem {
           cryptoConfig.keyPairs = config.keyPairs;
         }
         return new SoftwareCryptoAdapter(cryptoConfig);
+      }
+      case 'snarkjs': {
+        const zkConfig: SnarkjsConfig = config.config || {};
+        if (config.keyPairs) {
+          zkConfig.keyPairs = config.keyPairs;
+        }
+        return new SnarkjsCryptoAdapter(zkConfig);
       }
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown crypto adapter type: ${config.type}`);
@@ -348,6 +371,9 @@ export class VQPSystem {
         }
 
         return new HTTPTransportAdapter(this.vqpService, transportConfig);
+      }
+      case 'memory': {
+        return new MemoryTransportAdapter(this.vqpService, config.config || {});
       }
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown transport adapter type: ${config.type}`);

@@ -19,11 +19,13 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": [
     "lib/**/*",
-    "examples/**/*"
+    "examples/**/*",
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",

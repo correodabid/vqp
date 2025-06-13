@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "node --test --import tsx tests/unit/adapters/crypto/crypto-adapter.test.ts tests/unit/adapters/transport/websocket-adapter.test.ts tests/unit/adapters/encrypted-data-adapter.test.ts tests/unit/adapters/audit/memory-adapter.test.ts tests/unit/adapters/audit/file-adapter.test.ts tests/unit/domain/types.test.ts tests/unit/domain/vqp-service.test.ts tests/integration/vqp-system.test.ts tests/integration/e2e-flow.test.ts tests/integration/comprehensive-flow.test.ts",
+    "test": "node --test --import tsx tests/unit/adapters/crypto/crypto-adapter.test.ts tests/unit/adapters/transport/websocket-adapter.test.ts tests/unit/adapters/encrypted-data-adapter.test.ts tests/unit/adapters/audit/memory-adapter.test.ts tests/unit/adapters/audit/file-adapter.test.ts tests/unit/domain/types.test.ts tests/unit/domain/vqp-service.test.ts tests/unit/adapters/crypto/snarkjs-adapter.test.ts tests/integration/vqp-system.test.ts tests/integration/e2e-flow.test.ts tests/integration/comprehensive-flow.test.ts",
     "test:new": "find tests -name '*.test.js' -exec node {} \\;",
     "test:watch": "node --test --watch --import tsx tests/unit/**/*.test.ts tests/integration/**/*.test.ts",
     "test:coverage": "c8 node --test --import tsx tests/unit/**/*.test.ts tests/integration/**/*.test.ts",
@@ -22,7 +22,12 @@
     "docs:build": "typedoc",
     "start": "npm run build && cp -r vendor dist/ && node dist/examples/basic-example.js",
     "cli": "npx tsx tools/cli.ts",
-    "examples": "npm run start"
+    "examples": "npm run start",
+    "zk:setup": "bash tools/setup-snarkjs.sh",
+    "zk:compile": "bash tools/compile-circuits.sh",
+    "zk:example": "npm run build && npx tsx examples/zk-proof-example.ts",
+    "zk:demo": "npm run build && npx tsx examples/complete-zk-example.ts",
+    "zk:test": "npm run build && node --test tests/unit/adapters/crypto/snarkjs-adapter.test.ts"
   },
   "keywords": [
     "privacy",
@@ -47,6 +52,7 @@
     "express": "^4.21.2",
     "jose": "^5.10.0",
     "ora": "^8.2.0",
+    "snarkjs": "^0.7.5",
     "uuid": "^9.0.1",
     "ws": "^8.18.2"
   },
