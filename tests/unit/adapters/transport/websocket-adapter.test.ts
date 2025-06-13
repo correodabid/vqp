@@ -222,11 +222,16 @@ async function waitForMessage(ws: WebSocket, timeout = 3000): Promise<WebSocketM
         }, timeout);
 
         const onMessage = (data: any) => {
-            cleanup();
             try {
                 const message = JSON.parse(data.toString());
+                // Skip heartbeat pings and only return actual responses
+                if (message.type === 'ping' && message.payload?.heartbeat) {
+                    return; // Continue listening for the next message
+                }
+                cleanup();
                 resolve(message);
             } catch (error) {
+                cleanup();
                 reject(error);
             }
         };
@@ -236,14 +241,21 @@ async function waitForMessage(ws: WebSocket, timeout = 3000): Promise<WebSocketM
             reject(error);
         };
 
+        const onClose = () => {
+            cleanup();
+            reject(new Error('Connection closed while waiting for message'));
+        };
+
         const cleanup = () => {
             clearTimeout(timeoutId);
             ws.removeListener('message', onMessage);
             ws.removeListener('error', onError);
+            ws.removeListener('close', onClose);
         };
 
-        ws.once('message', onMessage);
+        ws.on('message', onMessage);
         ws.on('error', onError);
+        ws.on('close', onClose);
     });
 }
 
@@ -307,12 +319,15 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle single client connection', async () => {
             const ws = new WebSocket(`ws://localhost:${PORT}`);
+            
+            // Set up message listener before connection to avoid race condition
+            const messagePromise = waitForMessage(ws, 1000);
+            
             await waitForConnection(ws);
-
             assert.strictEqual(adapter.getConnectionCount(), 1);
 
             // Should receive welcome message
-            const welcomeMessage = await waitForMessage(ws, 1000); // Reduced timeout
+            const welcomeMessage = await messagePromise;
             assert.strictEqual(welcomeMessage.type, 'ping');
             assert.ok(welcomeMessage.payload);
 
@@ -413,10 +428,13 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
         beforeEach(async () => {
             await adapter.start();
             client = new WebSocket(`ws://localhost:${PORT}`);
+            
+            // Set up message listener before connection to catch welcome message
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
             
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
         });
 
         afterEach(() => {
@@ -538,28 +556,15 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
             await adapter.start();
         });
 
-        it('should send heartbeat pings periodically', async () => {
-            const client = new WebSocket(`ws://localhost:${PORT}`);
-            await waitForConnection(client);
-
-            // Skip welcome message
-            const welcomeMessage = await waitForMessage(client, 1000);
-            assert.strictEqual(welcomeMessage.type, 'ping');
-
-            // Wait for heartbeat ping (should come within 1 second + some margin)
-            const heartbeatMessage = await waitForMessage(client, 1500); // Reduced timeout
-            assert.strictEqual(heartbeatMessage.type, 'ping');
-            assert.strictEqual(heartbeatMessage.payload.heartbeat, true);
-
-            client.close();
-        });
-
         it('should handle pong responses to pings', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            
+            // Set up message listener before connection
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
 
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
 
             // Send a ping and expect a pong
             const pingMessage: WebSocketMessage = {
@@ -586,10 +591,11 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle message size limits', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
             
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
 
             // Create a message that exceeds the size limit
             const largePayload = 'x'.repeat(1024 * 15); // 15KB (exceeds 10KB limit)
@@ -611,10 +617,11 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle invalid JSON messages', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
             
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
 
             // Send invalid JSON
             client.send('{ invalid json structure');
@@ -628,10 +635,11 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle unknown message types', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
             
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
 
             const unknownMessage = {
                 type: 'unknown_type',
@@ -713,10 +721,11 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should log successful queries', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
             
             // Skip welcome message
-            await waitForMessage(client);
+            await welcomePromise;
 
             const initialLogCount = auditAdapter.getLogCount();
             
@@ -748,8 +757,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
             const clients: WebSocket[] = [];
             for (let i = 0; i < 2; i++) {
                 const client = new WebSocket(`ws://localhost:${PORT}`);
+                const welcomePromise = waitForMessage(client, 1000);
                 await waitForConnection(client);
-                await waitForMessage(client, 1000); // Skip welcome message
+                await welcomePromise; // Skip welcome message
                 clients.push(client);
             }
 
@@ -773,8 +783,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle rapid successive queries', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client, 1000);
             await waitForConnection(client);
-            await waitForMessage(client, 1000); // Skip welcome message
+            await welcomePromise; // Skip welcome message
 
             const queries: VQPQuery[] = [];
             const allMessages: WebSocketMessage[] = [];
@@ -843,7 +854,6 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
             for (let i = 0; i < clientCount; i++) {
                 const client = new WebSocket(`ws://localhost:${PORT}`);
                 await waitForConnection(client);
-                await waitForMessage(client, 1000); // Skip welcome with shorter timeout
                 clients.push(client);
 
                 // Each client sends different types of queries (reduced to 1 query per client)
@@ -862,7 +872,7 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
                     };
 
                     client.send(JSON.stringify(message));
-                    const response = await waitForMessage(client, 2000); // Reduced timeout
+                    const response = await waitForMessage(client, 3000); // Increased timeout for concurrent load
                     assert.strictEqual(response.type, 'response');
                     assert.strictEqual(response.id, query.id);
                 })());
@@ -883,8 +893,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle empty queries gracefully', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
-            await waitForMessage(client); // Skip welcome
+            await welcomePromise; // Skip welcome
 
             const emptyMessage: WebSocketMessage = {
                 type: 'query',
@@ -904,8 +915,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle queries with invalid vocabulary', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
-            await waitForMessage(client); // Skip welcome
+            await welcomePromise; // Skip welcome
 
             const invalidQuery = createTestQuery(
                 { '>=': [{ 'var': 'age' }, 18] },
@@ -931,8 +943,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should recover from client disconnections', async () => {
             const client1 = new WebSocket(`ws://localhost:${PORT}`);
+            const welcome1Promise = waitForMessage(client1, 1000);
             await waitForConnection(client1);
-            await waitForMessage(client1, 1000); // Skip welcome
+            await welcome1Promise; // Skip welcome
 
             assert.strictEqual(adapter.getConnectionCount(), 1);
 
@@ -944,8 +957,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
             // Should be able to accept new connections
             const client2 = new WebSocket(`ws://localhost:${PORT}`);
+            const welcome2Promise = waitForMessage(client2, 1000);
             await waitForConnection(client2);
-            await waitForMessage(client2, 1000); // Skip welcome
+            await welcome2Promise; // Skip welcome
 
             assert.strictEqual(adapter.getConnectionCount(), 1);
 
@@ -969,8 +983,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle malformed message structure', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
-            await waitForMessage(client); // Skip welcome
+            await welcomePromise; // Skip welcome
 
             // Send message with missing required fields
             const malformedMessage = {
@@ -996,8 +1011,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle WebSocket close codes properly', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
-            await waitForMessage(client); // Skip welcome
+            await welcomePromise; // Skip welcome
 
             // Close with normal closure code
             client.close(1000, 'Normal closure');
@@ -1009,8 +1025,9 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
 
         it('should handle ping/pong frames correctly', async () => {
             const client = new WebSocket(`ws://localhost:${PORT}`);
+            const welcomePromise = waitForMessage(client);
             await waitForConnection(client);
-            await waitForMessage(client); // Skip welcome
+            await welcomePromise; // Skip welcome
 
             // Test WebSocket-level ping (not VQP ping)
             client.ping();

@@ -6,7 +6,7 @@
 import { AuditPort } from '../../domain/ports/secondary.js';
 import { VQPQuery, VQPResponse, VQPError, AuditEntry } from '../../domain/types.js';
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 
 export interface FileAuditConfig {
   logDirectory: string;

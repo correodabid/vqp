@@ -177,18 +177,18 @@ describe('EncryptedDataAdapter', () => {
     });
 
     it('should validate data integrity with checksum', async () => {
-      // Load the encrypted file and tamper with it
+      // Load the encrypted file and tamper with the checksum specifically
       const fileContent = await fs.readFile(testVaultPath, 'utf8');
       const vaultStructure = JSON.parse(fileContent);
       
-      // Tamper with the encrypted data
-      vaultStructure.encryptedData = vaultStructure.encryptedData.replace(/^./, 'X');
+      // Tamper with the checksum to simulate data integrity issues
+      vaultStructure.checksum = 'tampered_checksum_that_will_not_match_the_decrypted_data';
       
       await fs.writeFile(testVaultPath, JSON.stringify(vaultStructure));
 
       await rejects(
         async () => await adapter.getData(['personal', 'age']),
-        /Failed to decrypt vault/
+        /Data integrity check failed/
       );
     });
 
