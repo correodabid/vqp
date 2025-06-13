@@ -49,7 +49,10 @@ async function demonstrateZKProofIntegration() {
       },
       audit: {
         type: 'memory'
-      }
+      },
+        evaluation:{
+          type: 'jsonlogic',
+        }
     });
 
     await vqpSystem.initialize();

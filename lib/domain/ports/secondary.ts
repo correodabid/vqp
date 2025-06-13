@@ -34,6 +34,16 @@ export interface CryptographicPort {
 }
 
 /**
+ * Query Evaluation Port - How VQP evaluates query expressions
+ */
+export interface QueryEvaluationPort {
+  evaluate(expression: any, data: any): Promise<any>;
+  isValidExpression(expression: any): Promise<boolean>;
+  extractVariables(expression: any): Promise<string[]>;
+  sanitizeExpression(expression: any): Promise<any>;
+}
+
+/**
  * Vocabulary Port - How VQP resolves and validates vocabularies
  */
 export interface VocabularyPort {

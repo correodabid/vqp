@@ -48,6 +48,9 @@ async function fileAuditExample() {
     transport: {
       type: 'http',
       port: 3000
+    },
+    evaluation: {
+      type: 'jsonlogic',
     }
   };
 

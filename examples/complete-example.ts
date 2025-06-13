@@ -11,7 +11,10 @@ async function runCompleteDemo() {
         crypto: {type:'software'},
         vocabulary: {type:'http'},
         audit: {type:'console', logLevel: 'info'},
-        transport: {type:'http', port: 8080}
+        transport: {type:'http', port: 8080},
+        evaluation:{
+          type: 'jsonlogic',
+        }
     });
     
     await vqpSystem.start();
@@ -71,7 +74,10 @@ async function demoWithQueryBuilder() {
         crypto: {type:'software'},
         vocabulary: {type:'http'},
         audit: {type:'console', logLevel: 'info'},
-        transport: {type:'http', port: 8080}
+        transport: {type:'http', port: 8080},
+        evaluation:{
+          type: 'jsonlogic',
+        }
     });
     
     await vqpSystem.start();

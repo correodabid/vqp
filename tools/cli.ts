@@ -35,6 +35,9 @@ program
         vocabulary: { type: 'http' },
         audit: { type: 'console', logLevel: options.logLevel },
         transport: { type: 'http', port: parseInt(options.port) },
+        evaluation: {
+          type: 'jsonlogic',
+        },
       });
 
       await vqpSystem.start();

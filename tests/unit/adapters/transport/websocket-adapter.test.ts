@@ -18,6 +18,7 @@ import {
   CryptographicPort,
   VocabularyPort,
   AuditPort,
+  QueryEvaluationPort,
 } from '../../../../lib/domain/ports/secondary.js';
 import { randomUUID } from 'node:crypto';
 
@@ -176,6 +177,72 @@ class TestAuditAdapter implements AuditPort {
   }
 }
 
+class MockQueryEvaluationAdapter implements QueryEvaluationPort {
+  async evaluate(expression: any, data: any): Promise<any> {
+    // Simple mock evaluation for common test cases
+    if (expression['>='] && Array.isArray(expression['>=']) && expression['>='].length >= 2) {
+      const [left, right] = expression['>='];
+      if (left?.var && typeof right === 'number') {
+        const value = this.getNestedValue(data, left.var);
+        return value >= right;
+      }
+    }
+
+    if (expression['=='] && Array.isArray(expression['==']) && expression['=='].length >= 2) {
+      const [left, right] = expression['=='];
+      if (left?.var) {
+        const value = this.getNestedValue(data, left.var);
+        return value === right;
+      }
+    }
+
+    if (expression.and && Array.isArray(expression.and)) {
+      const results = await Promise.all(
+        expression.and.map((expr: any) => this.evaluate(expr, data))
+      );
+      return results.every((r) => r === true);
+    }
+
+    if (expression.or && Array.isArray(expression.or)) {
+      const results = await Promise.all(
+        expression.or.map((expr: any) => this.evaluate(expr, data))
+      );
+      return results.some((r) => r === true);
+    }
+
+    return false;
+  }
+
+  async isValidExpression(expression: any): Promise<boolean> {
+    return typeof expression === 'object' && expression !== null;
+  }
+
+  async extractVariables(expression: any): Promise<string[]> {
+    const variables: string[] = [];
+    this.extractVarsRecursive(expression, variables);
+    return [...new Set(variables)];
+  }
+
+  async sanitizeExpression(expression: any): Promise<any> {
+    return expression; // No sanitization in mock
+  }
+
+  private getNestedValue(data: any, path: string): any {
+    return path.split('.').reduce((current, key) => current?.[key], data);
+  }
+
+  private extractVarsRecursive(obj: any, variables: string[]): void {
+    if (typeof obj === 'object' && obj !== null) {
+      if (obj.var && typeof obj.var === 'string') {
+        variables.push(obj.var);
+      }
+      for (const value of Object.values(obj)) {
+        this.extractVarsRecursive(value, variables);
+      }
+    }
+  }
+}
+
 // Utility functions for tests
 function createTestQuery(expr: any, vocab: string = 'vqp:identity:v1'): VQPQuery {
   return {
@@ -288,7 +355,8 @@ describe('WebSocket Transport Adapter - Advanced Tests', () => {
       new TestDataAdapter(),
       new TestCryptoAdapter(),
       new TestVocabularyAdapter(),
-      auditAdapter
+      auditAdapter,
+      new MockQueryEvaluationAdapter()
     );
 
     adapter = new WebSocketTransportAdapter(vqpService, {

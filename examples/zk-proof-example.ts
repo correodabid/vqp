@@ -70,6 +70,9 @@ async function runZKProofExample() {
         type: 'http',
         port: 3001,
       },
+    evaluation: {
+      type: 'jsonlogic',
+    }
     });
 
     // Replace the crypto adapter with our ZK-enabled one

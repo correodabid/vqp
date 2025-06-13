@@ -8,6 +8,7 @@ import {
   CryptographicPort,
   VocabularyPort,
   AuditPort,
+  QueryEvaluationPort,
 } from '../../../lib/domain/ports/secondary.js';
 
 // Mock adapters for testing
@@ -144,12 +145,134 @@ class MockAuditAdapter implements AuditPort {
   }
 }
 
+class MockQueryEvaluationAdapter implements QueryEvaluationPort {
+  async evaluate(expr: any, data: any): Promise<boolean | number | string | null> {
+    // Simple mock evaluation using basic JSONLogic-like logic
+    if (typeof expr === 'object' && expr !== null) {
+      // Handle >= operator
+      if (expr['>=']) {
+        const [left, right] = expr['>='];
+        const leftVal = this.resolveValue(left, data);
+        const rightVal = this.resolveValue(right, data);
+        return leftVal >= rightVal;
+      }
+
+      // Handle == operator
+      if (expr['==']) {
+        const [left, right] = expr['=='];
+        const leftVal = this.resolveValue(left, data);
+        const rightVal = this.resolveValue(right, data);
+        return leftVal === rightVal;
+      }
+
+      // Handle and operator
+      if (expr['and']) {
+        const conditions = expr['and'];
+        for (const condition of conditions) {
+          const result = await this.evaluate(condition, data);
+          if (!result) return false;
+        }
+        return true;
+      }
+
+      // Handle or operator
+      if (expr['or']) {
+        const conditions = expr['or'];
+        for (const condition of conditions) {
+          const result = await this.evaluate(condition, data);
+          if (result) return true;
+        }
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  private resolveValue(value: any, data: any): any {
+    if (typeof value === 'object' && value !== null && value.var) {
+      // Handle variable resolution
+      const path = value.var.split('.');
+      let current = data;
+      for (const key of path) {
+        if (current && typeof current === 'object' && key in current) {
+          current = current[key];
+        } else {
+          return undefined;
+        }
+      }
+      return current;
+    }
+    return value;
+  }
+
+  async isValidExpression(expression: any): Promise<boolean> {
+    // Simple validation - check if it's an object with recognized operators
+    if (typeof expression !== 'object' || expression === null) {
+      return false;
+    }
+
+    const validOperators = ['>=', '==', '<=', '>', '<', '!=', 'and', 'or', 'not', 'var'];
+    const keys = Object.keys(expression);
+    return keys.some((key) => validOperators.includes(key));
+  }
+
+  async extractVariables(expression: any): Promise<string[]> {
+    const variables = new Set<string>();
+
+    const extract = (expr: any) => {
+      if (typeof expr === 'object' && expr !== null) {
+        if (expr.var) {
+          variables.add(expr.var);
+        } else {
+          Object.values(expr).forEach((value) => {
+            if (Array.isArray(value)) {
+              value.forEach(extract);
+            } else {
+              extract(value);
+            }
+          });
+        }
+      }
+    };
+
+    extract(expression);
+    return Array.from(variables);
+  }
+
+  async sanitizeExpression(expression: any): Promise<any> {
+    // Simple sanitization - remove any potentially dangerous operations
+    const sanitized = JSON.parse(JSON.stringify(expression));
+
+    const sanitize = (expr: any): any => {
+      if (typeof expr === 'object' && expr !== null) {
+        const sanitizedObj: any = {};
+        for (const [key, value] of Object.entries(expr)) {
+          // Block dangerous operations
+          if (!['eval', 'function', 'constructor', '__proto__'].includes(key)) {
+            if (Array.isArray(value)) {
+              sanitizedObj[key] = value.map(sanitize);
+            } else {
+              sanitizedObj[key] = sanitize(value);
+            }
+          }
+        }
+        return sanitizedObj;
+      }
+      return expr;
+    };
+
+    return sanitize(sanitized);
+  }
+}
+
 describe('VQP Service - Basic Tests', () => {
   let vqpService: VQPService;
   let mockDataAdapter: MockDataAdapter;
   let mockCryptoAdapter: MockCryptoAdapter;
   let mockVocabularyAdapter: MockVocabularyAdapter;
   let mockAuditAdapter: MockAuditAdapter;
+  let mockQueryEvaluationAdapter: MockQueryEvaluationAdapter;
 
   beforeEach(() => {
     // Setup mock data
@@ -166,6 +289,7 @@ describe('VQP Service - Basic Tests', () => {
     mockCryptoAdapter = new MockCryptoAdapter();
     mockVocabularyAdapter = new MockVocabularyAdapter();
     mockAuditAdapter = new MockAuditAdapter();
+    mockQueryEvaluationAdapter = new MockQueryEvaluationAdapter();
 
     // Create VQP service with mocks
     vqpService = new VQPService(
@@ -173,6 +297,7 @@ describe('VQP Service - Basic Tests', () => {
       mockCryptoAdapter,
       mockVocabularyAdapter,
       mockAuditAdapter,
+      mockQueryEvaluationAdapter,
       {
         maxQueryComplexity: 10,
         allowedVocabularies: ['vqp:identity:v1', 'vqp:financial:v1'],

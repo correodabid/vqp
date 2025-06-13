@@ -37,6 +37,9 @@ async function demonstrateVQPSystemWithMemoryAudit() {
       corsOrigins: ['*'],
       rateLimitWindowMs: 60000,
       rateLimitMax: 100
+    },
+    evaluation: {
+      type: 'jsonlogic',
     }
   };
 

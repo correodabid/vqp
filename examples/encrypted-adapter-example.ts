@@ -8,6 +8,7 @@ import { VQPService } from '../lib/domain/vqp-service.js';
 import { SoftwareCryptoAdapter } from '../lib/adapters/crypto/software-adapter.js';
 import { HTTPVocabularyAdapter } from '../lib/adapters/vocabulary/http-adapter.js';
 import { MemoryAuditAdapter } from '../lib/adapters/audit/memory-adapter.js';
+import { JSONLogicAdapter } from '../lib/adapters/evaluation'
 
 async function main() {
   console.log('🔐 VQP Encrypted Data Adapter Example\n');
@@ -58,13 +59,15 @@ async function main() {
   const cryptoAdapter = new SoftwareCryptoAdapter();
   const vocabularyAdapter = new HTTPVocabularyAdapter();
   const auditAdapter = new MemoryAuditAdapter();
+  const evaluationAdapter = new JSONLogicAdapter();
 
   // 4. Create VQP service with encrypted data
   const vqpService = new VQPService(
     encryptedDataAdapter,
     cryptoAdapter,
     vocabularyAdapter,
-    auditAdapter
+    auditAdapter,
+    evaluationAdapter
   );
 
   // 5. Example queries that work with encrypted data

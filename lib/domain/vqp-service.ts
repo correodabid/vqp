@@ -3,9 +3,14 @@
  * This service is completely isolated from external concerns
  */
 
-import * as jsonlogic from '../vendor/jsonlogic.js';
 import { VQPQuery, VQPResponse, VQPError } from './types.js';
-import { DataAccessPort, CryptographicPort, VocabularyPort, AuditPort } from './ports/secondary.js';
+import {
+  DataAccessPort,
+  CryptographicPort,
+  VocabularyPort,
+  AuditPort,
+  QueryEvaluationPort,
+} from './ports/secondary.js';
 
 export class VQPService {
   constructor(
@@ -13,6 +18,7 @@ export class VQPService {
     private crypto: CryptographicPort,
     private vocabulary: VocabularyPort,
     private audit: AuditPort,
+    private queryEvaluation: QueryEvaluationPort,
     private config: {
       maxQueryComplexity?: number;
       allowedVocabularies?: string[];
@@ -61,8 +67,8 @@ export class VQPService {
       // 7. Gather required data
       const data = await this.gatherData(requiredPaths, query.query.vocab);
 
-      // 8. Evaluate query using JSONLogic
-      const result = this.evaluateQuery(query.query.expr, data);
+      // 8. Evaluate query using the injected evaluation adapter
+      const result = await this.evaluateQuery(query.query.expr, data);
 
       // 9. Generate timestamp for response
       const responseTimestamp = new Date().toISOString();
@@ -248,11 +254,11 @@ export class VQPService {
   }
 
   /**
-   * Evaluate query using JSONLogic
+   * Evaluate query using the injected evaluation port
    */
-  private evaluateQuery(expr: any, data: any): boolean | number | string | null {
+  private async evaluateQuery(expr: any, data: any): Promise<boolean | number | string | null> {
     try {
-      return jsonlogic.apply(expr, data);
+      return await this.queryEvaluation.evaluate(expr, data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw this.createError('EVALUATION_ERROR', `Query evaluation failed: ${errorMessage}`);

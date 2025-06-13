@@ -33,21 +33,22 @@ const baseConfig = {
   target: 'node18',
   format: 'esm',
   external,
-  sourcemap: true,
-  minify: false, // Keep readable for library
-  keepNames: true,
+  sourcemap: false, // Remove source maps for production library
+  minify: true, // Minify for smaller bundle size
+  keepNames: false, // Allow name mangling for smaller size
   outdir: 'dist',
   entryNames: '[dir]/[name]',
   chunkNames: '[name]-[hash]',
   splitting: false, // Disable for library
   metafile: true,
-  logLevel: 'info'
+  logLevel: 'info',
+  treeShaking: true // Enable tree shaking
 };
 
 async function buildLibrary() {
   console.log('🚀 Building VQP library with esbuild...');
 
-  // Main library bundle
+  // Main library bundle - ONLY library code, no tools or examples
   await build({
     ...baseConfig,
     entryPoints: [
@@ -59,27 +60,7 @@ async function buildLibrary() {
     outdir: 'dist'
   });
 
-  // CLI tools
-  await build({
-    ...baseConfig,
-    entryPoints: ['tools/cli.ts', 'tools/benchmark.ts'],
-    outdir: 'dist/tools',
-    // Remove banner for CLI tools - causes issues with ES modules
-  });
-
-  // Examples
-  await build({
-    ...baseConfig,
-    entryPoints: [
-      'examples/basic-example.ts',
-      'examples/complete-example.ts',
-      'examples/zk-proof-example.ts',
-      'examples/quickstart.ts'
-    ],
-    outdir: 'dist/examples'
-  });
-
-  console.log('✅ Build completed successfully!');
+  console.log('✅ Library build completed successfully!');
 }
 
 // Build types separately with tsc

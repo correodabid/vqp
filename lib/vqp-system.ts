@@ -19,6 +19,10 @@ import { HTTPVocabularyAdapter, HTTPVocabularyConfig } from './adapters/vocabula
 import { ConsoleAuditAdapter, ConsoleAuditConfig } from './adapters/audit/console-adapter.js';
 import { FileAuditAdapter, FileAuditConfig } from './adapters/audit/file-adapter.js';
 import { MemoryAuditAdapter, MemoryAuditConfig } from './adapters/audit/memory-adapter.js';
+import {
+  JSONLogicAdapter,
+  JSONLogicAdapterConfig,
+} from './adapters/evaluation/jsonlogic-adapter.js';
 
 // Types
 import { QueryPort } from './domain/ports/primary.js';
@@ -28,6 +32,7 @@ import {
   VocabularyPort,
   AuditPort,
   NetworkPort,
+  QueryEvaluationPort,
 } from './domain/ports/secondary.js';
 
 export interface DataConfig {
@@ -75,12 +80,18 @@ export interface TransportConfig {
   config?: any; // Allow additional configuration
 }
 
+export interface EvaluationConfig {
+  type: 'jsonlogic';
+  config?: any; // Allow additional configuration for future evaluation engines
+}
+
 export interface VQPSystemConfig {
   data: DataConfig;
   crypto: CryptoConfig;
   vocabulary: VocabularyConfig;
   audit: AuditConfig;
   transport: TransportConfig;
+  evaluation: EvaluationConfig;
 }
 
 export interface SystemStatus {
@@ -105,6 +116,7 @@ export class VQPSystem {
   private vocabularyAdapter: VocabularyPort;
   private auditAdapter: AuditPort;
   private transportAdapter: QueryPort;
+  private queryEvaluationAdapter: QueryEvaluationPort;
   private startTime: number = Date.now();
 
   constructor(config: VQPSystemConfig) {
@@ -113,13 +125,15 @@ export class VQPSystem {
     this.cryptoAdapter = this.createCryptoAdapter(config.crypto);
     this.vocabularyAdapter = this.createVocabularyAdapter(config.vocabulary);
     this.auditAdapter = this.createAuditAdapter(config.audit);
+    this.queryEvaluationAdapter = this.createEvaluationAdapter(config.evaluation);
 
     // Assemble core service with adapters
     this.vqpService = new VQPService(
       this.dataAdapter,
       this.cryptoAdapter,
       this.vocabularyAdapter,
-      this.auditAdapter
+      this.auditAdapter,
+      this.queryEvaluationAdapter
     );
 
     // Create transport adapter (primary adapter)
@@ -382,6 +396,31 @@ export class VQPSystem {
         throw new VQPError('CONFIGURATION_ERROR', `Unknown transport adapter type: ${config.type}`);
     }
   }
+
+  /**
+   * Create evaluation adapter based on configuration
+   */
+  private createEvaluationAdapter(config: EvaluationConfig): QueryEvaluationPort {
+    if (!config || !config.type) {
+      // Fallback to default configuration
+      config = { type: 'jsonlogic' };
+    }
+
+    switch (config.type) {
+      case 'jsonlogic': {
+        const evaluationConfig: JSONLogicAdapterConfig = {};
+        if (config.config) {
+          Object.assign(evaluationConfig, config.config);
+        }
+        return new JSONLogicAdapter(evaluationConfig);
+      }
+      default:
+        throw new VQPError(
+          'CONFIGURATION_ERROR',
+          `Unknown evaluation adapter type: ${config.type}`
+        );
+    }
+  }
 }
 
 /**
@@ -408,6 +447,9 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
       type: 'http',
       port: 8080,
     },
+    evaluation: {
+      type: 'jsonlogic',
+    },
   };
 
   // Deep merge overrides
@@ -426,6 +468,9 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
   }
   if (overrides.transport) {
     config.transport = { ...defaultConfig.transport, ...overrides.transport };
+  }
+  if (overrides.evaluation) {
+    config.evaluation = { ...defaultConfig.evaluation, ...overrides.evaluation };
   }
 
   return new VQPSystem(config);
