@@ -3,14 +3,12 @@ import { CryptographicPort } from './ports/secondary';
 
 /**
  * VQP Verifier - Validates cryptographic proofs in VQP responses
- * 
+ *
  * This is a separate component from VQPService because verification
  * is often done by different parties than those generating responses.
  */
 export class VQPVerifier {
-  constructor(
-    private crypto: CryptographicPort
-  ) {}
+  constructor(private crypto: CryptographicPort) {}
 
   /**
    * Verify a VQP response's cryptographic proof
@@ -20,13 +18,13 @@ export class VQPVerifier {
       switch (response.proof.type) {
         case 'signature':
           return await this.verifySignature(response);
-        
+
         case 'zk-snark':
           return await this.verifyZKProof(response);
-        
+
         case 'multisig':
           return await this.verifyMultiSignature(response);
-        
+
         default:
           throw new Error(`Unsupported proof type: ${(response.proof as any).type}`);
       }
@@ -45,7 +43,7 @@ export class VQPVerifier {
     }
 
     const { publicKey, signature } = response.proof;
-    
+
     if (!publicKey || !signature) {
       throw new Error('Missing publicKey or signature in proof');
     }
@@ -59,14 +57,10 @@ export class VQPVerifier {
       type: 'signature',
       algorithm: response.proof.algorithm || 'ed25519',
       publicKey,
-      signature
+      signature,
     };
 
-    return await this.crypto.verify(
-      signatureProof,
-      payloadBuffer,
-      publicKey
-    );
+    return await this.crypto.verify(signatureProof, payloadBuffer, publicKey);
   }
 
   /**
@@ -102,7 +96,7 @@ export class VQPVerifier {
       queryId: response.queryId,
       result: response.result,
       timestamp: response.timestamp,
-      responder: response.responder
+      responder: response.responder,
     };
   }
 
@@ -140,18 +134,21 @@ export class VQPVerifier {
   /**
    * Full verification: both cryptographic proof and metadata
    */
-  async verifyComplete(response: VQPResponse, originalQueryId?: string): Promise<{
+  async verifyComplete(
+    response: VQPResponse,
+    originalQueryId?: string
+  ): Promise<{
     cryptographicProof: boolean;
     metadata: boolean;
     overall: boolean;
   }> {
     const cryptographicProof = await this.verify(response);
     const metadata = await this.verifyMetadata(response, originalQueryId);
-    
+
     return {
       cryptographicProof,
       metadata,
-      overall: cryptographicProof && metadata
+      overall: cryptographicProof && metadata,
     };
   }
 }

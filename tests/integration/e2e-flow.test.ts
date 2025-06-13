@@ -24,42 +24,42 @@ describe('VQP End-to-End Flow', () => {
       personal: {
         age: 28,
         citizenship: 'US',
-        has_drivers_license: true
+        has_drivers_license: true,
       },
       financial: {
         annual_income: 75000,
-        employment_status: 'employed'
-      }
+        employment_status: 'employed',
+      },
     };
 
     // Create test keys with proper hex format
     // Let's not provide keys and let the adapter generate them automatically
-    
+
     writeFileSync(testVaultPath, JSON.stringify(testVault, null, 2));
 
     // Initialize VQP system with real adapters
     vqpSystem = new VQPSystem({
       data: {
         type: 'filesystem',
-        vaultPath: testVaultPath
+        vaultPath: testVaultPath,
       },
       crypto: {
-        type: 'software'
+        type: 'software',
         // No keyPairs - will auto-generate default key
       },
       vocabulary: {
         type: 'http',
         allowedVocabularies: ['vqp:identity:v1', 'vqp:financial:v1'],
-        cacheTimeoutMs: 300000
+        cacheTimeoutMs: 300000,
       },
       audit: {
         type: 'console',
-        logLevel: 'info'
+        logLevel: 'info',
       },
       transport: {
         type: 'http',
-        port: 3000
-      }
+        port: 3000,
+      },
     });
 
     // Note: VQPSystem doesn't have initialize method, it's ready after construction
@@ -79,8 +79,8 @@ describe('VQP End-to-End Flow', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '>=': [{ 'var': 'age' }, 18] }  // Use vocabulary field name, not vault path
-      }
+        expr: { '>=': [{ var: 'age' }, 18] }, // Use vocabulary field name, not vault path
+      },
     };
 
     const response = await vqpSystem.getService().processQuery(query);
@@ -100,8 +100,8 @@ describe('VQP End-to-End Flow', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:financial:v1',
-        expr: { '>=': [{ 'var': 'annual_income' }, 50000] }  // Use vocabulary field name
-      }
+        expr: { '>=': [{ var: 'annual_income' }, 50000] }, // Use vocabulary field name
+      },
     };
 
     const response = await vqpSystem.getService().processQuery(query);
@@ -119,8 +119,8 @@ describe('VQP End-to-End Flow', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '==': [{ 'var': 'citizenship' }, 'US'] }  // Use vocabulary field name
-      }
+        expr: { '==': [{ var: 'citizenship' }, 'US'] }, // Use vocabulary field name
+      },
     };
 
     const response = await vqpSystem.getService().processQuery(query);
@@ -138,8 +138,8 @@ describe('VQP End-to-End Flow', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '>=': [{ 'var': 'age' }, 18] }
-      }
+        expr: { '>=': [{ var: 'age' }, 18] },
+      },
     };
 
     try {

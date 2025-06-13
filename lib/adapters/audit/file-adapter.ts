@@ -10,12 +10,12 @@ import { join } from 'path';
 
 export interface FileAuditConfig {
   logDirectory: string;
-  maxFileSize?: number;          // Max file size in bytes (default: 10MB)
-  maxFiles?: number;             // Max number of rotated files (default: 5)
-  includeFullQuery?: boolean;    // Include full query in logs
+  maxFileSize?: number; // Max file size in bytes (default: 10MB)
+  maxFiles?: number; // Max number of rotated files (default: 5)
+  includeFullQuery?: boolean; // Include full query in logs
   includeFullResponse?: boolean; // Include full response in logs
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
-  fileNamePattern?: string;      // Pattern for log file names (default: 'vqp-audit-{date}.log')
+  fileNamePattern?: string; // Pattern for log file names (default: 'vqp-audit-{date}.log')
 }
 
 export class FileAuditAdapter implements AuditPort {
@@ -42,8 +42,9 @@ export class FileAuditAdapter implements AuditPort {
   }
 
   async logQuery(query: VQPQuery, response: VQPResponse): Promise<void> {
-    const responseTime = new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
-    
+    const responseTime =
+      new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
+
     const entry: AuditEntry = {
       timestamp: response.timestamp, // Use response timestamp instead of current time
       event: 'query_processed',
@@ -56,8 +57,8 @@ export class FileAuditAdapter implements AuditPort {
         responder: response.responder,
         proofType: response.proof.type,
         ...(this.includeFullQuery && { fullQuery: query }),
-        ...(this.includeFullResponse && { fullResponse: response })
-      }
+        ...(this.includeFullResponse && { fullResponse: response }),
+      },
     };
 
     // Only include result if it's a boolean
@@ -76,13 +77,13 @@ export class FileAuditAdapter implements AuditPort {
         name: error.name,
         code: error.code,
         message: error.message,
-        details: error.details
+        details: error.details,
       } as any,
       metadata: {
         errorCode: error.code,
         errorMessage: error.message,
-        context: this.sanitizeContext(context)
-      }
+        context: this.sanitizeContext(context),
+      },
     };
 
     await this.writeLogEntry(entry, 'error');
@@ -100,12 +101,12 @@ export class FileAuditAdapter implements AuditPort {
     for (const logFile of logFiles) {
       try {
         const content = await fs.readFile(logFile, 'utf-8');
-        const lines = content.split('\n').filter(line => line.trim());
-        
+        const lines = content.split('\n').filter((line) => line.trim());
+
         for (const line of lines) {
           try {
             const entry = JSON.parse(line) as AuditEntry;
-            
+
             // Apply filters
             if (this.matchesFilters(entry, filters)) {
               entries.push(entry);
@@ -122,7 +123,9 @@ export class FileAuditAdapter implements AuditPort {
     }
 
     // Sort by timestamp (newest first)
-    return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return entries.sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   }
 
   async purgeOldEntries(olderThan: string): Promise<number> {
@@ -133,14 +136,14 @@ export class FileAuditAdapter implements AuditPort {
     for (const logFile of logFiles) {
       try {
         const content = await fs.readFile(logFile, 'utf-8');
-        const lines = content.split('\n').filter(line => line.trim());
+        const lines = content.split('\n').filter((line) => line.trim());
         const remainingLines: string[] = [];
 
         for (const line of lines) {
           try {
             const entry = JSON.parse(line) as AuditEntry;
             const entryDate = new Date(entry.timestamp);
-            
+
             if (entryDate >= cutoffDate) {
               remainingLines.push(line);
             } else {
@@ -153,7 +156,10 @@ export class FileAuditAdapter implements AuditPort {
         }
 
         // Write back the remaining entries
-        await fs.writeFile(logFile, remainingLines.join('\n') + (remainingLines.length > 0 ? '\n' : ''));
+        await fs.writeFile(
+          logFile,
+          remainingLines.join('\n') + (remainingLines.length > 0 ? '\n' : '')
+        );
       } catch (error) {
         // Skip files that can't be processed
         continue;
@@ -215,7 +221,7 @@ export class FileAuditAdapter implements AuditPort {
 
   private async rotateLogFiles(currentFile: string): Promise<void> {
     const baseFile = currentFile.replace(/\.log$/, '');
-    
+
     // Remove oldest file if we're at the limit
     const oldestFile = `${baseFile}.${this.maxFiles}.log`;
     try {
@@ -228,7 +234,7 @@ export class FileAuditAdapter implements AuditPort {
     for (let i = this.maxFiles - 1; i >= 1; i--) {
       const oldFile = `${baseFile}.${i}.log`;
       const newFile = `${baseFile}.${i + 1}.log`;
-      
+
       try {
         await fs.rename(oldFile, newFile);
       } catch {
@@ -248,8 +254,8 @@ export class FileAuditAdapter implements AuditPort {
     try {
       const files = await fs.readdir(this.logDirectory);
       const logFiles = files
-        .filter(file => file.includes('vqp-audit') && file.endsWith('.log'))
-        .map(file => join(this.logDirectory, file))
+        .filter((file) => file.includes('vqp-audit') && file.endsWith('.log'))
+        .map((file) => join(this.logDirectory, file))
         .sort(); // Sort to ensure consistent order
 
       return logFiles;
@@ -258,12 +264,15 @@ export class FileAuditAdapter implements AuditPort {
     }
   }
 
-  private matchesFilters(entry: AuditEntry, filters?: {
-    startTime?: string;
-    endTime?: string;
-    querier?: string;
-    event?: string;
-  }): boolean {
+  private matchesFilters(
+    entry: AuditEntry,
+    filters?: {
+      startTime?: string;
+      endTime?: string;
+      querier?: string;
+      event?: string;
+    }
+  ): boolean {
     if (!filters) {
       return true;
     }
@@ -302,7 +311,7 @@ export class FileAuditAdapter implements AuditPort {
     const levels = { debug: 0, info: 1, warn: 2, error: 3 };
     const currentLevel = levels[this.logLevel as keyof typeof levels] || 1;
     const messageLevel = levels[level as keyof typeof levels] || 1;
-    
+
     return messageLevel >= currentLevel;
   }
 
@@ -313,7 +322,7 @@ export class FileAuditAdapter implements AuditPort {
 
     // Remove sensitive information from context
     const sanitized = { ...context };
-    
+
     // Remove common sensitive fields
     const sensitiveFields = ['password', 'token', 'secret', 'key', 'credential'];
     for (const field of sensitiveFields) {
@@ -329,7 +338,7 @@ export class FileAuditAdapter implements AuditPort {
       return {
         ...sanitized,
         _truncated: true,
-        _originalSize: contextStr.length
+        _originalSize: contextStr.length,
       };
     }
 

@@ -3,7 +3,12 @@ import * as assert from 'node:assert/strict';
 import { v4 as uuidv4 } from 'uuid';
 import { VQPService } from '../../../lib/domain/vqp-service.js';
 import { VQPQuery, VQPResponse } from '../../../lib/domain/types.js';
-import { DataAccessPort, CryptographicPort, VocabularyPort, AuditPort } from '../../../lib/domain/ports/secondary.js';
+import {
+  DataAccessPort,
+  CryptographicPort,
+  VocabularyPort,
+  AuditPort,
+} from '../../../lib/domain/ports/secondary.js';
 
 // Mock adapters for testing
 class MockDataAdapter implements DataAccessPort {
@@ -38,7 +43,7 @@ class MockCryptoAdapter implements CryptographicPort {
       type: 'signature',
       algorithm: 'ed25519',
       signature: 'mock_signature_' + Buffer.from(data).toString('hex').slice(0, 16),
-      publicKey: 'mock_public_key'
+      publicKey: 'mock_public_key',
     };
   }
 
@@ -50,7 +55,7 @@ class MockCryptoAdapter implements CryptographicPort {
   async generateKeyPair(): Promise<{ publicKey: string; privateKey: string }> {
     return {
       publicKey: 'mock_public_key_' + Math.random().toString(36).substring(7),
-      privateKey: 'mock_private_key_' + Math.random().toString(36).substring(7)
+      privateKey: 'mock_private_key_' + Math.random().toString(36).substring(7),
     };
   }
 
@@ -65,7 +70,7 @@ class MockCryptoAdapter implements CryptographicPort {
       type: 'zk-snark',
       circuit: circuit,
       proof: 'mock_zk_proof',
-      publicInputs: inputs
+      publicInputs: inputs,
     };
   }
 
@@ -84,8 +89,8 @@ class MockVocabularyAdapter implements VocabularyPort {
       properties: {
         age: { type: 'integer', minimum: 0, maximum: 150 },
         citizenship: { type: 'string', pattern: '^[A-Z]{2}$' },
-        has_drivers_license: { type: 'boolean' }
-      }
+        has_drivers_license: { type: 'boolean' },
+      },
     });
   }
 
@@ -130,7 +135,7 @@ class MockAuditAdapter implements AuditPort {
   async purgeOldEntries(olderThan: string): Promise<number> {
     const cutoffDate = new Date(olderThan);
     const initialCount = this.logs.length;
-    this.logs = this.logs.filter(log => new Date(log.timestamp) > cutoffDate);
+    this.logs = this.logs.filter((log) => new Date(log.timestamp) > cutoffDate);
     return initialCount - this.logs.length;
   }
 
@@ -152,8 +157,8 @@ describe('VQP Service - Basic Tests', () => {
       personal: {
         age: 25,
         citizenship: 'US',
-        has_drivers_license: true
-      }
+        has_drivers_license: true,
+      },
     };
 
     // Create mock adapters
@@ -173,8 +178,8 @@ describe('VQP Service - Basic Tests', () => {
         allowedVocabularies: ['vqp:identity:v1', 'vqp:financial:v1'],
         rateLimits: {
           queriesPerHour: 100,
-          queriesPerDay: 1000
-        }
+          queriesPerDay: 1000,
+        },
       }
     );
   });
@@ -191,10 +196,13 @@ describe('VQP Service - Basic Tests', () => {
   it('should handle crypto operations', async () => {
     const message = Buffer.from('test message');
     const signature = await mockCryptoAdapter.sign(message, 'test-key');
-    
+
     assert.ok(signature, 'Should generate signature');
-    assert.ok(signature.signature.startsWith('mock_signature_'), 'Should have mock signature format');
-    
+    assert.ok(
+      signature.signature.startsWith('mock_signature_'),
+      'Should have mock signature format'
+    );
+
     const isValid = await mockCryptoAdapter.verify(signature, message, signature.publicKey);
     assert.strictEqual(isValid, true, 'Should verify signature');
   });
@@ -215,12 +223,12 @@ describe('VQP Service - Basic Tests', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '>=': [{ 'var': 'personal.age' }, 18] }
-      }
+        expr: { '>=': [{ var: 'personal.age' }, 18] },
+      },
     };
 
     const response = await vqpService.processQuery(query);
-    
+
     assert.strictEqual(response.queryId, query.id, 'Should reference original query ID');
     assert.strictEqual(response.version, '1.0.0', 'Should have correct version');
     assert.strictEqual(typeof response.result, 'boolean', 'Should return boolean result');
@@ -230,7 +238,7 @@ describe('VQP Service - Basic Tests', () => {
 
   it('should handle audit logging', async () => {
     const initialLogsCount = mockAuditAdapter.getLogs().length;
-    
+
     const query: VQPQuery = {
       id: uuidv4(),
       version: '1.0.0',
@@ -239,15 +247,15 @@ describe('VQP Service - Basic Tests', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '>=': [{ 'var': 'personal.age' }, 21] }
-      }
+        expr: { '>=': [{ var: 'personal.age' }, 21] },
+      },
     };
 
     await vqpService.processQuery(query);
-    
+
     const finalLogsCount = mockAuditAdapter.getLogs().length;
     assert.strictEqual(finalLogsCount, initialLogsCount + 1, 'Should add audit log entry');
-    
+
     const lastLog = mockAuditAdapter.getLogs()[finalLogsCount - 1];
     assert.strictEqual(lastLog.query.id, query.id, 'Should log the correct query');
   });
@@ -257,7 +265,7 @@ describe('VQP Service - Basic Tests', () => {
     assert.ok(keyPair.publicKey, 'Should generate public key');
     assert.ok(keyPair.privateKey, 'Should generate private key');
     assert.ok(keyPair.publicKey.startsWith('mock_public_key_'), 'Should have mock format');
-    
+
     const derivedKey = await mockCryptoAdapter.deriveKey('test_input', 'test_salt');
     assert.ok(derivedKey, 'Should derive key');
     assert.ok(derivedKey.startsWith('derived_key_'), 'Should have derived key format');
@@ -266,10 +274,10 @@ describe('VQP Service - Basic Tests', () => {
   it('should handle audit entry purging', async () => {
     // Add some test logs
     await mockAuditAdapter.logError(new Error('Test error'), { test: true });
-    
+
     const oldDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(); // 2 days ago
     const purgedCount = await mockAuditAdapter.purgeOldEntries(oldDate);
-    
+
     assert.strictEqual(typeof purgedCount, 'number', 'Should return number of purged entries');
   });
 });

@@ -27,7 +27,7 @@ describe('VQP Comprehensive Flow Tests', () => {
         has_passport: true,
         government_id_verified: true,
         email_verified: true,
-        phone_verified: true
+        phone_verified: true,
       },
       financial: {
         annual_income: 95000,
@@ -37,7 +37,7 @@ describe('VQP Comprehensive Flow Tests', () => {
         credit_score: 750,
         has_bank_account: true,
         debt_to_income_ratio: 0.25,
-        tax_resident_country: 'US'
+        tax_resident_country: 'US',
       },
       system: {
         uptime_percentage_24h: 99.9,
@@ -47,8 +47,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         throughput_rps: 850,
         cpu_usage_percentage: 45.5,
         memory_usage_percentage: 62.0,
-        health_status: 'healthy'
-      }
+        health_status: 'healthy',
+      },
     };
 
     writeFileSync(testVaultPath, JSON.stringify(comprehensiveVault, null, 2));
@@ -57,24 +57,24 @@ describe('VQP Comprehensive Flow Tests', () => {
     vqpSystem = new VQPSystem({
       data: {
         type: 'filesystem',
-        vaultPath: testVaultPath
+        vaultPath: testVaultPath,
       },
       crypto: {
-        type: 'software'
+        type: 'software',
       },
       vocabulary: {
         type: 'http',
         allowedVocabularies: ['vqp:identity:v1', 'vqp:financial:v1', 'vqp:metrics:v1'],
-        cacheTimeoutMs: 300000
+        cacheTimeoutMs: 300000,
       },
       audit: {
         type: 'console',
-        logLevel: 'info'
+        logLevel: 'info',
       },
       transport: {
         type: 'http',
-        port: 3000
-      }
+        port: 3000,
+      },
     });
   });
 
@@ -93,8 +93,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
-        }
+          expr: { '>=': [{ var: 'age' }, 18] },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -114,8 +114,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 21] }
-        }
+          expr: { '>=': [{ var: 'age' }, 21] },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -133,12 +133,12 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
           expr: {
-            'and': [
-              { '==': [{ 'var': 'citizenship' }, 'US'] },
-              { '==': [{ 'var': 'government_id_verified' }, true] }
-            ]
-          }
-        }
+            and: [
+              { '==': [{ var: 'citizenship' }, 'US'] },
+              { '==': [{ var: 'government_id_verified' }, true] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -156,15 +156,15 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
           expr: {
-            'and': [
-              { '>=': [{ 'var': 'age' }, 25] },
-              { '==': [{ 'var': 'citizenship' }, 'US'] },
-              { '==': [{ 'var': 'has_drivers_license' }, true] },
-              { '==': [{ 'var': 'email_verified' }, true] },
-              { '==': [{ 'var': 'phone_verified' }, true] }
-            ]
-          }
-        }
+            and: [
+              { '>=': [{ var: 'age' }, 25] },
+              { '==': [{ var: 'citizenship' }, 'US'] },
+              { '==': [{ var: 'has_drivers_license' }, true] },
+              { '==': [{ var: 'email_verified' }, true] },
+              { '==': [{ var: 'phone_verified' }, true] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -183,8 +183,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ 'var': 'annual_income' }, 50000] }
-        }
+          expr: { '>=': [{ var: 'annual_income' }, 50000] },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -202,15 +202,15 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:financial:v1',
           expr: {
-            'and': [
-              { '>=': [{ 'var': 'annual_income' }, 80000] },
-              { '>=': [{ 'var': 'credit_score' }, 700] },
-              { '==': [{ 'var': 'employment_status' }, 'employed'] },
-              { '>=': [{ 'var': 'employment_duration_months' }, 24] },
-              { '<=': [{ 'var': 'debt_to_income_ratio' }, 0.36] }
-            ]
-          }
-        }
+            and: [
+              { '>=': [{ var: 'annual_income' }, 80000] },
+              { '>=': [{ var: 'credit_score' }, 700] },
+              { '==': [{ var: 'employment_status' }, 'employed'] },
+              { '>=': [{ var: 'employment_duration_months' }, 24] },
+              { '<=': [{ var: 'debt_to_income_ratio' }, 0.36] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -227,8 +227,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ 'var': 'annual_income' }, 100000] }
-        }
+          expr: { '>=': [{ var: 'annual_income' }, 100000] },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -248,13 +248,13 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:metrics:v1',
           expr: {
-            'and': [
-              { '>=': [{ 'var': 'uptime_percentage_24h' }, 99.5] },
-              { '<=': [{ 'var': 'response_time_p95_ms' }, 200] },
-              { '<=': [{ 'var': 'error_rate_percentage' }, 0.1] }
-            ]
-          }
-        }
+            and: [
+              { '>=': [{ var: 'uptime_percentage_24h' }, 99.5] },
+              { '<=': [{ var: 'response_time_p95_ms' }, 200] },
+              { '<=': [{ var: 'error_rate_percentage' }, 0.1] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -272,13 +272,13 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:metrics:v1',
           expr: {
-            'and': [
-              { '<=': [{ 'var': 'cpu_usage_percentage' }, 80] },
-              { '<=': [{ 'var': 'memory_usage_percentage' }, 85] },
-              { '==': [{ 'var': 'health_status' }, 'healthy'] }
-            ]
-          }
-        }
+            and: [
+              { '<=': [{ var: 'cpu_usage_percentage' }, 80] },
+              { '<=': [{ var: 'memory_usage_percentage' }, 85] },
+              { '==': [{ var: 'health_status' }, 'healthy'] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -296,12 +296,12 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:metrics:v1',
           expr: {
-            'and': [
-              { '>=': [{ 'var': 'throughput_rps' }, 1000] },
-              { '<=': [{ 'var': 'response_time_p95_ms' }, 100] }
-            ]
-          }
-        }
+            and: [
+              { '>=': [{ var: 'throughput_rps' }, 1000] },
+              { '<=': [{ var: 'response_time_p95_ms' }, 100] },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -321,23 +321,20 @@ describe('VQP Comprehensive Flow Tests', () => {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
           expr: {
-            'or': [
+            or: [
               {
-                'and': [
-                  { '>=': [{ 'var': 'age' }, 30] },
-                  { '==': [{ 'var': 'has_passport' }, true] }
-                ]
+                and: [{ '>=': [{ var: 'age' }, 30] }, { '==': [{ var: 'has_passport' }, true] }],
               },
               {
-                'and': [
-                  { '>=': [{ 'var': 'age' }, 25] },
-                  { '==': [{ 'var': 'government_id_verified' }, true] },
-                  { '==': [{ 'var': 'email_verified' }, true] }
-                ]
-              }
-            ]
-          }
-        }
+                and: [
+                  { '>=': [{ var: 'age' }, 25] },
+                  { '==': [{ var: 'government_id_verified' }, true] },
+                  { '==': [{ var: 'email_verified' }, true] },
+                ],
+              },
+            ],
+          },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -351,16 +348,16 @@ describe('VQP Comprehensive Flow Tests', () => {
       const queries = [
         {
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
+          expr: { '>=': [{ var: 'age' }, 18] },
         },
         {
           vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ 'var': 'annual_income' }, 50000] }
+          expr: { '>=': [{ var: 'annual_income' }, 50000] },
         },
         {
           vocab: 'vqp:metrics:v1',
-          expr: { '==': [{ 'var': 'health_status' }, 'healthy'] }
-        }
+          expr: { '==': [{ var: 'health_status' }, 'healthy'] },
+        },
       ];
 
       for (const queryConfig of queries) {
@@ -372,15 +369,19 @@ describe('VQP Comprehensive Flow Tests', () => {
           query: {
             lang: 'jsonlogic@1.0.0',
             vocab: queryConfig.vocab,
-            expr: queryConfig.expr
-          }
+            expr: queryConfig.expr,
+          },
         };
 
         const response = await vqpSystem.getService().processQuery(query);
         const isValid = await vqpSystem.verify(response);
 
         assert.strictEqual(isValid, true, `Response verification failed for ${queryConfig.vocab}`);
-        assert.strictEqual(response.result, true, `Query result was false for ${queryConfig.vocab}`);
+        assert.strictEqual(
+          response.result,
+          true,
+          `Query result was false for ${queryConfig.vocab}`
+        );
       }
     });
   });
@@ -395,8 +396,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
-        }
+          expr: { '>=': [{ var: 'age' }, 18] },
+        },
       };
 
       try {
@@ -417,8 +418,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '==': [{ 'var': 'non_existent_field' }, 'value'] }
-        }
+          expr: { '==': [{ var: 'non_existent_field' }, 'value'] },
+        },
       };
 
       const response = await vqpSystem.getService().processQuery(query);
@@ -439,8 +440,8 @@ describe('VQP Comprehensive Flow Tests', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
-        }
+          expr: { '>=': [{ var: 'age' }, 18] },
+        },
       };
 
       const startTime = Date.now();
@@ -450,7 +451,10 @@ describe('VQP Comprehensive Flow Tests', () => {
       const processingTime = endTime - startTime;
 
       assert.strictEqual(response.result, true);
-      assert.ok(processingTime < 1000, `Processing took ${processingTime}ms, should be under 1000ms`);
+      assert.ok(
+        processingTime < 1000,
+        `Processing took ${processingTime}ms, should be under 1000ms`
+      );
     });
   });
 });

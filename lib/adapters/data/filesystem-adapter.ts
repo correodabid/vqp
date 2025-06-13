@@ -16,7 +16,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
   private dataCache: Record<string, any> = {};
   private policiesCache: any = null;
 
-  constructor(private config: FileSystemDataConfig) {}
+  constructor(private _config: FileSystemDataConfig) {}
 
   async getData(path: string[]): Promise<any> {
     const vault = await this.loadVault();
@@ -25,7 +25,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
 
   async validateDataAccess(path: string[], requester: string): Promise<boolean> {
     const policies = await this.loadPolicies();
-    
+
     // If no policies file, allow all access (development mode)
     if (!policies) {
       return true;
@@ -33,7 +33,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
 
     // Check if the path is allowed for this requester
     const pathString = path.join('.');
-    
+
     // Look for exact path match
     if (policies.allowed_paths && policies.allowed_paths[pathString]) {
       const allowedRequesters = policies.allowed_paths[pathString];
@@ -44,8 +44,10 @@ export class FileSystemDataAdapter implements DataAccessPort {
     if (policies.wildcard_paths) {
       for (const [pattern, allowedRequesters] of Object.entries(policies.wildcard_paths)) {
         if (this.matchesWildcard(pathString, pattern)) {
-          return (allowedRequesters as string[]).includes('*') || 
-                 (allowedRequesters as string[]).includes(requester);
+          return (
+            (allowedRequesters as string[]).includes('*') ||
+            (allowedRequesters as string[]).includes(requester)
+          );
         }
       }
     }
@@ -76,7 +78,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
       }
 
       // Read from file
-      const vaultData = await fs.readFile(this.config.vaultPath, 'utf-8');
+      const vaultData = await fs.readFile(this._config.vaultPath, 'utf-8');
       const vault = JSON.parse(vaultData);
 
       // Cache for future use (with TTL in production)
@@ -85,7 +87,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
       return vault;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Failed to load vault from ${this.config.vaultPath}:`, error);
+      console.error(`Failed to load vault from ${this._config.vaultPath}:`, error);
       throw new Error(`Vault data not accessible: ${errorMessage}`);
     }
   }
@@ -94,7 +96,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
    * Load access policies from file
    */
   private async loadPolicies(): Promise<any> {
-    if (!this.config.policiesPath) {
+    if (!this._config.policiesPath) {
       return null;
     }
 
@@ -105,7 +107,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
       }
 
       // Read from file
-      const policiesData = await fs.readFile(this.config.policiesPath, 'utf-8');
+      const policiesData = await fs.readFile(this._config.policiesPath, 'utf-8');
       const policies = JSON.parse(policiesData);
 
       // Cache for future use
@@ -113,7 +115,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
 
       return policies;
     } catch (error) {
-      console.warn(`Failed to load policies from ${this.config.policiesPath}:`, error);
+      console.warn(`Failed to load policies from ${this._config.policiesPath}:`, error);
       return null;
     }
   }
@@ -123,19 +125,19 @@ export class FileSystemDataAdapter implements DataAccessPort {
    */
   private extractNestedData(data: any, path: string[]): any {
     let current = data;
-    
+
     for (const segment of path) {
       if (current === null || current === undefined) {
         return undefined;
       }
-      
+
       if (typeof current === 'object' && segment in current) {
         current = current[segment];
       } else {
         return undefined;
       }
     }
-    
+
     return current;
   }
 
@@ -145,9 +147,9 @@ export class FileSystemDataAdapter implements DataAccessPort {
   private matchesWildcard(path: string, pattern: string): boolean {
     // Convert wildcard pattern to regex
     const regexPattern = pattern
-      .replace(/\./g, '\\.')  // Escape dots
-      .replace(/\*/g, '.*');   // Convert * to .*
-    
+      .replace(/\./g, '\\.') // Escape dots
+      .replace(/\*/g, '.*'); // Convert * to .*
+
     const regex = new RegExp(`^${regexPattern}$`);
     return regex.test(path);
   }
@@ -165,7 +167,7 @@ export class FileSystemDataAdapter implements DataAccessPort {
    */
   async verifyVault(): Promise<boolean> {
     try {
-      await fs.access(this.config.vaultPath, fs.constants.R_OK);
+      await fs.access(this._config.vaultPath, fs.constants.R_OK);
       return true;
     } catch {
       return false;

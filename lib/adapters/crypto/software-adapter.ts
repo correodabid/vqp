@@ -14,28 +14,31 @@ ed25519.etc.sha512Sync = (...m) => createHash('sha512').update(Buffer.concat(m))
 
 export interface SoftwareCryptoConfig {
   defaultKeyId?: string;
-  keyPairs?: Record<string, {
-    publicKey: string;
-    privateKey: string;
-  }>;
+  keyPairs?: Record<
+    string,
+    {
+      publicKey: string;
+      privateKey: string;
+    }
+  >;
 }
 
 export class SoftwareCryptoAdapter implements CryptographicPort {
   private keyPairs: Map<string, { publicKey: Uint8Array; privateKey: Uint8Array }> = new Map();
 
-  constructor(private config: SoftwareCryptoConfig = {}) {
+  constructor(private _config: SoftwareCryptoConfig = {}) {
     this.initializeKeys();
   }
 
   async sign(data: Buffer, keyId: string = 'default'): Promise<Proof> {
     let keyPair = this.keyPairs.get(keyId);
-    
+
     // If key doesn't exist and it's the default key, generate it
     if (!keyPair && keyId === 'default') {
       await this.addKeyPair('default');
       keyPair = this.keyPairs.get(keyId);
     }
-    
+
     if (!keyPair) {
       throw new Error(`Key not found: ${keyId}`);
     }
@@ -47,7 +50,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
         type: 'signature' as const,
         algorithm: 'ed25519' as const,
         publicKey: this.bytesToHex(keyPair.publicKey),
-        signature: this.bytesToHex(signature)
+        signature: this.bytesToHex(signature),
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -77,7 +80,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
 
     return {
       publicKey: this.bytesToHex(publicKey),
-      privateKey: this.bytesToHex(privateKey)
+      privateKey: this.bytesToHex(privateKey),
     };
   }
 
@@ -90,11 +93,11 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
 
       // Use PBKDF2 with SHA-256, 100,000 iterations (NIST recommended minimum)
       const derivedKey = pbkdf2Sync(
-        input,           // password/input
-        saltBuffer,      // salt
-        100000,          // iterations (NIST recommended minimum)
-        32,              // key length (256 bits)
-        'sha256'         // hash function
+        input, // password/input
+        saltBuffer, // salt
+        100000, // iterations (NIST recommended minimum)
+        32, // key length (256 bits)
+        'sha256' // hash function
       );
 
       return this.bytesToHex(derivedKey);
@@ -122,7 +125,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
 
     this.keyPairs.set(keyId, {
       publicKey: pubKey,
-      privateKey: privKey
+      privateKey: privKey,
     });
   }
 
@@ -152,14 +155,14 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
    * Initialize keys from configuration (synchronous for configured keys only)
    */
   private initializeKeys(): void {
-    if (this.config.keyPairs) {
-      for (const [keyId, keyData] of Object.entries(this.config.keyPairs)) {
+    if (this._config.keyPairs) {
+      for (const [keyId, keyData] of Object.entries(this._config.keyPairs)) {
         try {
           const pubKey = this.hexToBytes(keyData.publicKey);
           const privKey = this.hexToBytes(keyData.privateKey);
           this.keyPairs.set(keyId, {
             publicKey: pubKey,
-            privateKey: privKey
+            privateKey: privKey,
           });
         } catch (error) {
           throw new Error(`Invalid key pair for ${keyId}: ${error}`);
@@ -174,7 +177,7 @@ export class SoftwareCryptoAdapter implements CryptographicPort {
    */
   private bytesToHex(bytes: Uint8Array): string {
     return Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   }
 

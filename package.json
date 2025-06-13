@@ -58,6 +58,8 @@
     "@typescript-eslint/parser": "^7.18.0",
     "c8": "^9.1.0",
     "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.1",
     "prettier": "^3.5.3",
     "tsx": "^4.20.2",
     "typedoc": "^0.25.13",

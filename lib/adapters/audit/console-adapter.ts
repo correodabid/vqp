@@ -22,8 +22,9 @@ export class ConsoleAuditAdapter implements AuditPort {
   }
 
   async logQuery(query: VQPQuery, response: VQPResponse): Promise<void> {
-    const responseTime = new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
-    
+    const responseTime =
+      new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
+
     const entry: AuditEntry = {
       timestamp: new Date().toISOString(),
       event: 'query_processed',
@@ -33,8 +34,8 @@ export class ConsoleAuditAdapter implements AuditPort {
         vocabulary: query.query.vocab,
         responseTime,
         ...(this.config.includeFullQuery && { fullQuery: query }),
-        ...(this.config.includeFullResponse && { fullResponse: response })
-      }
+        ...(this.config.includeFullResponse && { fullResponse: response }),
+      },
     };
 
     // Only include result if it's a boolean
@@ -50,7 +51,7 @@ export class ConsoleAuditAdapter implements AuditPort {
       querier: this.truncateDID(query.requester),
       vocabulary: query.query.vocab,
       result: response.result,
-      responseTime: `${responseTime}ms`
+      responseTime: `${responseTime}ms`,
     };
 
     console.log(`[VQP] Query processed:`, logData);
@@ -64,8 +65,8 @@ export class ConsoleAuditAdapter implements AuditPort {
       querier: context.query?.requester,
       error,
       metadata: {
-        context: this.sanitizeContext(context)
-      }
+        context: this.sanitizeContext(context),
+      },
     };
 
     this.addEntry(entry);
@@ -75,7 +76,7 @@ export class ConsoleAuditAdapter implements AuditPort {
       code: error.code,
       message: error.message,
       queryId: context.query?.id,
-      querier: context.query?.requester ? this.truncateDID(context.query.requester) : undefined
+      querier: context.query?.requester ? this.truncateDID(context.query.requester) : undefined,
     });
   }
 
@@ -90,24 +91,20 @@ export class ConsoleAuditAdapter implements AuditPort {
     if (filters) {
       if (filters.startTime) {
         const startTime = new Date(filters.startTime).getTime();
-        filtered = filtered.filter(entry => 
-          new Date(entry.timestamp).getTime() >= startTime
-        );
+        filtered = filtered.filter((entry) => new Date(entry.timestamp).getTime() >= startTime);
       }
 
       if (filters.endTime) {
         const endTime = new Date(filters.endTime).getTime();
-        filtered = filtered.filter(entry => 
-          new Date(entry.timestamp).getTime() <= endTime
-        );
+        filtered = filtered.filter((entry) => new Date(entry.timestamp).getTime() <= endTime);
       }
 
       if (filters.querier) {
-        filtered = filtered.filter(entry => entry.querier === filters.querier);
+        filtered = filtered.filter((entry) => entry.querier === filters.querier);
       }
 
       if (filters.event) {
-        filtered = filtered.filter(entry => entry.event === filters.event);
+        filtered = filtered.filter((entry) => entry.event === filters.event);
       }
     }
 
@@ -118,12 +115,10 @@ export class ConsoleAuditAdapter implements AuditPort {
     const cutoffTime = new Date(olderThan).getTime();
     const initialCount = this.entries.length;
 
-    this.entries = this.entries.filter(entry => 
-      new Date(entry.timestamp).getTime() > cutoffTime
-    );
+    this.entries = this.entries.filter((entry) => new Date(entry.timestamp).getTime() > cutoffTime);
 
     const purgedCount = initialCount - this.entries.length;
-    
+
     if (purgedCount > 0) {
       console.log(`[VQP] Purged ${purgedCount} old audit entries`);
     }
@@ -158,13 +153,13 @@ export class ConsoleAuditAdapter implements AuditPort {
    */
   private sanitizeContext(context: any): any {
     const sanitized = { ...context };
-    
+
     // Remove full query/response to avoid logging sensitive data
     if (sanitized.query && !this.config.includeFullQuery) {
       sanitized.query = {
         id: sanitized.query.id,
         requester: sanitized.query.requester,
-        vocab: sanitized.query.query?.vocab
+        vocab: sanitized.query.query?.vocab,
       };
     }
 
@@ -200,14 +195,14 @@ export class ConsoleAuditAdapter implements AuditPort {
     } = {
       totalEntries: this.entries.length,
       events,
-      queriers
+      queriers,
     };
 
     // Only include entries if they exist
     if (this.entries.length > 0) {
       const oldest = this.entries[0]?.timestamp;
       const newest = this.entries[this.entries.length - 1]?.timestamp;
-      
+
       if (oldest) {
         result.oldestEntry = oldest;
       }

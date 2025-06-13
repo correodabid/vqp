@@ -81,10 +81,10 @@ export class HTTPTransportAdapter implements QueryPort {
   private setupRoutes(): void {
     // Health check
     this.app.get('/health', (req: Request, res: Response) => {
-      res.json({ 
-        status: 'healthy', 
+      res.json({
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
       });
     });
 
@@ -98,8 +98,8 @@ export class HTTPTransportAdapter implements QueryPort {
           res.status(400).json({
             error: {
               code: 'INVALID_QUERY',
-              message: 'Invalid query structure'
-            }
+              message: 'Invalid query structure',
+            },
           });
           return;
         }
@@ -110,7 +110,6 @@ export class HTTPTransportAdapter implements QueryPort {
         // Set appropriate headers
         res.setHeader('Content-Type', 'application/vqp+json');
         res.json(response);
-
       } catch (error) {
         console.error('VQP Query Error:', error);
 
@@ -121,8 +120,8 @@ export class HTTPTransportAdapter implements QueryPort {
           error: {
             code: vqpError.code,
             message: vqpError.message,
-            details: vqpError.details
-          }
+            details: vqpError.details,
+          },
         });
       }
     });
@@ -132,8 +131,8 @@ export class HTTPTransportAdapter implements QueryPort {
       res.status(501).json({
         error: {
           code: 'NOT_IMPLEMENTED',
-          message: 'Batch queries not yet implemented'
-        }
+          message: 'Batch queries not yet implemented',
+        },
       });
     });
 
@@ -142,8 +141,8 @@ export class HTTPTransportAdapter implements QueryPort {
       res.status(404).json({
         error: {
           code: 'NOT_FOUND',
-          message: 'Endpoint not found'
-        }
+          message: 'Endpoint not found',
+        },
       });
     });
   }
@@ -178,7 +177,7 @@ export class HTTPTransportAdapter implements QueryPort {
    */
   async start(): Promise<void> {
     const port = this.config.port || 8080;
-    
+
     return new Promise((resolve) => {
       this.server = this.app.listen(port, () => {
         console.log(`VQP HTTP server listening on port ${port}`);

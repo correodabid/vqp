@@ -28,7 +28,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
   async resolveVocabulary(uri: string): Promise<any> {
     // Check cache first
     const cached = this.cache.get(uri);
-    if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
       return cached.schema;
     }
 
@@ -47,7 +47,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
 
       // Cache the result
       await this.cacheVocabulary(uri, schema);
-      
+
       return schema;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -71,11 +71,11 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
             const varPath = obj.var.split('.');
             return this.isPathAllowed(varPath, vocabulary);
           }
-          
+
           // Recursively check object properties
-          return Object.values(obj).every(value => traverse(value, path));
+          return Object.values(obj).every((value) => traverse(value, path));
         } else if (Array.isArray(obj)) {
-          return obj.every(item => traverse(item, path));
+          return obj.every((item) => traverse(item, path));
         }
         return true;
       };
@@ -90,7 +90,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
   async cacheVocabulary(uri: string, schema: any): Promise<void> {
     this.cache.set(uri, {
       schema,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -99,8 +99,9 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
       return true; // No restrictions
     }
 
-    return this.config.allowedVocabularies.includes(uri) ||
-           this.config.allowedVocabularies.includes('*');
+    return (
+      this.config.allowedVocabularies.includes(uri) || this.config.allowedVocabularies.includes('*')
+    );
   }
 
   /**
@@ -125,8 +126,8 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
           age: { type: 'integer', minimum: 0, maximum: 150 },
           citizenship: { type: 'string', pattern: '^[A-Z]{2}$' },
           has_drivers_license: { type: 'boolean' },
-          email_verified: { type: 'boolean' }
-        }
+          email_verified: { type: 'boolean' },
+        },
       },
       'vqp:financial:v1': {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -134,13 +135,13 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
         type: 'object',
         properties: {
           annual_income: { type: 'integer', minimum: 0 },
-          employment_status: { 
-            type: 'string', 
-            enum: ['employed', 'self_employed', 'unemployed', 'retired', 'student'] 
+          employment_status: {
+            type: 'string',
+            enum: ['employed', 'self_employed', 'unemployed', 'retired', 'student'],
           },
           employment_duration_months: { type: 'integer', minimum: 0 },
-          has_bank_account: { type: 'boolean' }
-        }
+          has_bank_account: { type: 'boolean' },
+        },
       },
       'vqp:metrics:v1': {
         $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -150,12 +151,12 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
           uptime_percentage_24h: { type: 'number', minimum: 0, maximum: 100 },
           processed_events_last_hour: { type: 'integer', minimum: 0 },
           error_rate_percentage: { type: 'number', minimum: 0, maximum: 100 },
-          health_status: { 
-            type: 'string', 
-            enum: ['healthy', 'degraded', 'unhealthy', 'unknown'] 
-          }
-        }
-      }
+          health_status: {
+            type: 'string',
+            enum: ['healthy', 'degraded', 'unhealthy', 'unknown'],
+          },
+        },
+      },
     };
 
     const schema = vocabularies[uri];
@@ -179,7 +180,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
       if (!current[segment]) {
         return false; // Path not defined in vocabulary
       }
-      
+
       // Move to nested properties if they exist
       if (current[segment].properties) {
         current = current[segment].properties;
@@ -197,7 +198,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
       for (const [uri, schema] of Object.entries(this.config.defaultVocabularies)) {
         this.cache.set(uri, {
           schema,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     }
@@ -216,7 +217,7 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
   getCacheStats(): { size: number; entries: string[] } {
     return {
       size: this.cache.size,
-      entries: Array.from(this.cache.keys())
+      entries: Array.from(this.cache.keys()),
     };
   }
 }

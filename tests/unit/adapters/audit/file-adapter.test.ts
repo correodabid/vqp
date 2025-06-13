@@ -25,7 +25,7 @@ describe('FileAuditAdapter', () => {
       maxFiles: 3,
       includeFullQuery: true,
       includeFullResponse: true,
-      logLevel: 'debug'
+      logLevel: 'debug',
     });
   });
 
@@ -48,8 +48,8 @@ describe('FileAuditAdapter', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
-        }
+          expr: { '>=': [{ var: 'age' }, 18] },
+        },
       };
 
       const response: VQPResponse = {
@@ -62,8 +62,8 @@ describe('FileAuditAdapter', () => {
           type: 'signature',
           algorithm: 'ed25519',
           publicKey: 'test-public-key',
-          signature: 'test-signature'
-        }
+          signature: 'test-signature',
+        },
       };
 
       await adapter.logQuery(query, response);
@@ -72,7 +72,7 @@ describe('FileAuditAdapter', () => {
       const files = await fs.readdir(testDir);
       assert(files.length > 0, 'Log files should be created');
 
-      const logFile = files.find(f => f.includes('vqp-audit'));
+      const logFile = files.find((f) => f.includes('vqp-audit'));
       assert(logFile, 'VQP audit log file should exist');
 
       // Read log content
@@ -96,8 +96,8 @@ describe('FileAuditAdapter', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 21] }
-        }
+          expr: { '>=': [{ var: 'age' }, 21] },
+        },
       };
 
       const response: VQPResponse = {
@@ -110,14 +110,14 @@ describe('FileAuditAdapter', () => {
           type: 'signature',
           algorithm: 'ed25519',
           publicKey: 'test-public-key',
-          signature: 'test-signature'
-        }
+          signature: 'test-signature',
+        },
       };
 
       await adapter.logQuery(query, response);
 
       const files = await fs.readdir(testDir);
-      const logFile = files.find(f => f.includes('vqp-audit'));
+      const logFile = files.find((f) => f.includes('vqp-audit'));
       const content = await fs.readFile(join(testDir, logFile!), 'utf-8');
       const logEntry = JSON.parse(content.trim());
 
@@ -130,18 +130,18 @@ describe('FileAuditAdapter', () => {
     it('should log errors with context', async () => {
       const error = new VQPError(VQPErrorType.INVALID_QUERY, 'Test error message', {
         field: 'test-field',
-        value: 'test-value'
+        value: 'test-value',
       });
 
       const context = {
         queryId: 'test-query-error',
-        operation: 'query-validation'
+        operation: 'query-validation',
       };
 
       await adapter.logError(error, context);
 
       const files = await fs.readdir(testDir);
-      const logFile = files.find(f => f.includes('vqp-audit'));
+      const logFile = files.find((f) => f.includes('vqp-audit'));
       const content = await fs.readFile(join(testDir, logFile!), 'utf-8');
       const logEntry = JSON.parse(content.trim());
 
@@ -154,18 +154,18 @@ describe('FileAuditAdapter', () => {
 
     it('should sanitize sensitive information from context', async () => {
       const error = new VQPError(VQPErrorType.CRYPTO_ERROR, 'Crypto operation failed');
-      
+
       const context = {
         operation: 'signing',
         password: 'secret123',
         token: 'jwt-token-here',
-        publicData: 'this-should-remain'
+        publicData: 'this-should-remain',
       };
 
       await adapter.logError(error, context);
 
       const files = await fs.readdir(testDir);
-      const logFile = files.find(f => f.includes('vqp-audit'));
+      const logFile = files.find((f) => f.includes('vqp-audit'));
       const content = await fs.readFile(join(testDir, logFile!), 'utf-8');
       const logEntry = JSON.parse(content.trim());
 
@@ -182,18 +182,18 @@ describe('FileAuditAdapter', () => {
         {
           id: 'query-1',
           timestamp: '2025-06-12T09:00:00Z',
-          requester: 'did:test:user1'
+          requester: 'did:test:user1',
         },
         {
-          id: 'query-2', 
+          id: 'query-2',
           timestamp: '2025-06-12T10:00:00Z',
-          requester: 'did:test:user2'
+          requester: 'did:test:user2',
         },
         {
           id: 'query-3',
-          timestamp: '2025-06-12T11:00:00Z', 
-          requester: 'did:test:user1'
-        }
+          timestamp: '2025-06-12T11:00:00Z',
+          requester: 'did:test:user1',
+        },
       ];
 
       for (const q of queries) {
@@ -203,8 +203,8 @@ describe('FileAuditAdapter', () => {
           query: {
             lang: 'jsonlogic@1.0.0',
             vocab: 'vqp:identity:v1',
-            expr: { '>=': [{ 'var': 'age' }, 18] }
-          }
+            expr: { '>=': [{ var: 'age' }, 18] },
+          },
         };
 
         const response: VQPResponse = {
@@ -217,8 +217,8 @@ describe('FileAuditAdapter', () => {
             type: 'signature',
             algorithm: 'ed25519',
             publicKey: 'test-key',
-            signature: 'test-sig'
-          }
+            signature: 'test-sig',
+          },
         };
 
         await adapter.logQuery(query, response);
@@ -228,7 +228,7 @@ describe('FileAuditAdapter', () => {
     it('should return all entries when no filters applied', async () => {
       const entries = await adapter.getAuditTrail();
       assert.strictEqual(entries.length, 3);
-      
+
       // Should be sorted by timestamp (newest first)
       assert.strictEqual(entries[0].queryId, 'query-3');
       assert.strictEqual(entries[1].queryId, 'query-2');
@@ -237,19 +237,22 @@ describe('FileAuditAdapter', () => {
 
     it('should filter by querier', async () => {
       const entries = await adapter.getAuditTrail({
-        querier: 'did:test:user1'
+        querier: 'did:test:user1',
       });
-      
+
       assert.strictEqual(entries.length, 2);
-      assert(entries.every(e => e.querier === 'did:test:user1'), 'All entries should be from user1');
+      assert(
+        entries.every((e) => e.querier === 'did:test:user1'),
+        'All entries should be from user1'
+      );
     });
 
     it('should filter by time range', async () => {
       const entries = await adapter.getAuditTrail({
         startTime: '2025-06-12T09:30:00Z',
-        endTime: '2025-06-12T10:30:00Z'
+        endTime: '2025-06-12T10:30:00Z',
       });
-      
+
       assert.strictEqual(entries.length, 1);
       assert.strictEqual(entries[0].queryId, 'query-2');
     });
@@ -260,11 +263,11 @@ describe('FileAuditAdapter', () => {
       await adapter.logError(error, { test: true });
 
       const queryEntries = await adapter.getAuditTrail({
-        event: 'query_processed'
+        event: 'query_processed',
       });
-      
+
       const errorEntries = await adapter.getAuditTrail({
-        event: 'error_occurred'
+        event: 'error_occurred',
       });
 
       assert.strictEqual(queryEntries.length, 3);
@@ -284,14 +287,14 @@ describe('FileAuditAdapter', () => {
         query: {
           lang: 'jsonlogic@1.0.0',
           vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ 'var': 'age' }, 18] }
-        }
+          expr: { '>=': [{ var: 'age' }, 18] },
+        },
       };
 
       const newQuery: VQPQuery = {
         ...oldQuery,
         id: 'new-query',
-        timestamp: '2025-06-12T10:00:00Z' // today
+        timestamp: '2025-06-12T10:00:00Z', // today
       };
 
       const response: VQPResponse = {
@@ -304,16 +307,20 @@ describe('FileAuditAdapter', () => {
           type: 'signature',
           algorithm: 'ed25519',
           publicKey: 'test-key',
-          signature: 'test-sig'
-        }
+          signature: 'test-sig',
+        },
       };
 
       await adapter.logQuery(oldQuery, response);
-      await adapter.logQuery(newQuery, { ...response, queryId: newQuery.id, timestamp: '2025-06-12T10:00:01Z' });
+      await adapter.logQuery(newQuery, {
+        ...response,
+        queryId: newQuery.id,
+        timestamp: '2025-06-12T10:00:01Z',
+      });
 
       // Purge entries older than yesterday
       const purgedCount = await adapter.purgeOldEntries('2025-06-11T00:00:00Z');
-      
+
       assert.strictEqual(purgedCount, 1);
 
       // Verify only new entry remains
@@ -329,7 +336,7 @@ describe('FileAuditAdapter', () => {
       const smallAdapter = new FileAuditAdapter({
         logDirectory: testDir,
         maxFileSize: 100, // Very small to trigger rotation quickly
-        maxFiles: 2
+        maxFiles: 2,
       });
 
       // Generate enough log entries to trigger rotation
@@ -342,8 +349,8 @@ describe('FileAuditAdapter', () => {
           query: {
             lang: 'jsonlogic@1.0.0',
             vocab: 'vqp:identity:v1',
-            expr: { '>=': [{ 'var': 'age' }, 18] }
-          }
+            expr: { '>=': [{ var: 'age' }, 18] },
+          },
         };
 
         const response: VQPResponse = {
@@ -356,8 +363,8 @@ describe('FileAuditAdapter', () => {
             type: 'signature',
             algorithm: 'ed25519',
             publicKey: 'test-key',
-            signature: 'test-signature'
-          }
+            signature: 'test-signature',
+          },
         };
 
         await smallAdapter.logQuery(query, response);
@@ -365,8 +372,8 @@ describe('FileAuditAdapter', () => {
 
       // Check that rotated files exist
       const files = await fs.readdir(testDir);
-      const logFiles = files.filter(f => f.includes('vqp-audit') && f.endsWith('.log'));
-      
+      const logFiles = files.filter((f) => f.includes('vqp-audit') && f.endsWith('.log'));
+
       // Should have current file and at least one rotated file
       assert(logFiles.length > 1, 'Should have multiple log files after rotation');
     });

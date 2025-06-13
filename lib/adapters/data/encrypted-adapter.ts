@@ -3,46 +3,56 @@
  * This adapter provides AES-256-GCM encryption for vault data storage
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, createHash, pbkdf2Sync, DecipherGCM } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  createHash,
+  pbkdf2Sync,
+  DecipherGCM,
+} from 'crypto';
 import { promises as fs } from 'fs';
 import { DataAccessPort } from '../../domain/ports/secondary.js';
 
 export interface EncryptedDataConfig {
   vaultPath: string;
   policiesPath?: string;
-  encryptionKey?: string;    // Master key for encryption
+  encryptionKey?: string; // Master key for encryption
   keyDerivation?: {
-    iterations: number;       // PBKDF2 iterations (default: 100000)
-    salt?: string;           // Salt for key derivation (if not provided, will be auto-generated)
-    keyLength: number;       // Derived key length in bytes (default: 32 for AES-256)
+    iterations: number; // PBKDF2 iterations (default: 100000)
+    salt?: string; // Salt for key derivation (if not provided, will be auto-generated)
+    keyLength: number; // Derived key length in bytes (default: 32 for AES-256)
   };
-  cacheEnabled?: boolean;    // Enable in-memory caching (default: true)
+  cacheEnabled?: boolean; // Enable in-memory caching (default: true)
   compressionEnabled?: boolean; // Enable data compression before encryption (default: false)
 }
 
 interface EncryptedVaultStructure {
-  version: string;           // Encryption version for future compatibility
-  algorithm: string;         // Encryption algorithm used
+  version: string; // Encryption version for future compatibility
+  algorithm: string; // Encryption algorithm used
   keyDerivation: {
     iterations: number;
     salt: string;
     keyLength: number;
   };
-  encryptedData: string;     // Base64 encoded encrypted data
-  iv: string;               // Initialization vector
-  authTag: string;          // Authentication tag for GCM
-  timestamp: string;        // Last encryption timestamp
-  checksum: string;         // SHA-256 checksum of original data
+  encryptedData: string; // Base64 encoded encrypted data
+  iv: string; // Initialization vector
+  authTag: string; // Authentication tag for GCM
+  timestamp: string; // Last encryption timestamp
+  checksum: string; // SHA-256 checksum of original data
 }
 
 interface AccessPolicy {
   allowed_paths?: Record<string, string[]>;
   wildcard_paths?: Record<string, string[]>;
   default_policy?: 'allow' | 'deny';
-  rate_limits?: Record<string, {
-    requests_per_minute: number;
-    requests_per_hour: number;
-  }>;
+  rate_limits?: Record<
+    string,
+    {
+      requests_per_minute: number;
+      requests_per_hour: number;
+    }
+  >;
 }
 
 export class EncryptedDataAdapter implements DataAccessPort {
@@ -65,7 +75,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
 
   async getData(path: string[]): Promise<any> {
     const cacheKey = path.join('.');
-    
+
     // Return cached data if available and caching is enabled
     if (this.config.cacheEnabled !== false && this.dataCache[cacheKey]) {
       return this.dataCache[cacheKey];
@@ -73,12 +83,12 @@ export class EncryptedDataAdapter implements DataAccessPort {
 
     const vault = await this.loadVault();
     const data = this.extractNestedData(vault, path);
-    
+
     // Cache the result if caching is enabled
     if (this.config.cacheEnabled !== false) {
       this.dataCache[cacheKey] = data;
     }
-    
+
     return data;
   }
 
@@ -89,7 +99,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
     }
 
     const policies = await this.loadPolicies();
-    
+
     // If no policies file, use default policy or allow access
     if (!policies) {
       return true; // Default to allow in development mode
@@ -101,7 +111,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
     }
 
     const pathString = path.join('.');
-    
+
     // Check exact path match
     if (policies.allowed_paths && policies.allowed_paths[pathString]) {
       const allowedRequesters = policies.allowed_paths[pathString];
@@ -140,21 +150,22 @@ export class EncryptedDataAdapter implements DataAccessPort {
 
     const serializedData = JSON.stringify(data);
     const checksum = createHash('sha256').update(serializedData, 'utf8').digest('hex');
-    
+
     // Generate random IV for this encryption
     const iv = randomBytes(16);
     const cipher = createCipheriv(EncryptedDataAdapter.ALGORITHM, this.encryptionKey, iv);
-    
+
     let encrypted = cipher.update(serializedData, 'utf8', 'base64');
     encrypted += cipher.final('base64');
-    
+
     const authTag = cipher.getAuthTag();
 
     const vaultStructure: EncryptedVaultStructure = {
       version: EncryptedDataAdapter.VAULT_VERSION,
       algorithm: EncryptedDataAdapter.ALGORITHM,
       keyDerivation: {
-        iterations: this.config.keyDerivation?.iterations || EncryptedDataAdapter.DEFAULT_ITERATIONS,
+        iterations:
+          this.config.keyDerivation?.iterations || EncryptedDataAdapter.DEFAULT_ITERATIONS,
         salt: this.config.keyDerivation?.salt || '',
         keyLength: this.config.keyDerivation?.keyLength || EncryptedDataAdapter.DEFAULT_KEY_LENGTH,
       },
@@ -162,11 +173,11 @@ export class EncryptedDataAdapter implements DataAccessPort {
       iv: iv.toString('base64'),
       authTag: authTag.toString('base64'),
       timestamp: new Date().toISOString(),
-      checksum
+      checksum,
     };
 
     await fs.writeFile(this.config.vaultPath, JSON.stringify(vaultStructure, null, 2), 'utf8');
-    
+
     // Clear cache to force reload
     this.dataCache = {};
   }
@@ -185,11 +196,11 @@ export class EncryptedDataAdapter implements DataAccessPort {
   async rotateEncryptionKey(newEncryptionKey: string): Promise<void> {
     // Load current data with old key
     const currentData = await this.loadVault();
-    
+
     // Update encryption key
     this.config.encryptionKey = newEncryptionKey;
     this.initializeEncryptionKey();
-    
+
     // Re-encrypt with new key
     await this.saveVault(currentData);
   }
@@ -212,7 +223,7 @@ export class EncryptedDataAdapter implements DataAccessPort {
         this.config.keyDerivation = {
           iterations,
           keyLength,
-          salt
+          salt,
         };
       } else {
         this.config.keyDerivation.salt = salt;
@@ -232,11 +243,11 @@ export class EncryptedDataAdapter implements DataAccessPort {
   private async loadVault(): Promise<any> {
     try {
       const fileContent = await fs.readFile(this.config.vaultPath, 'utf8');
-      
+
       // Try to parse as encrypted vault first
       try {
         const vaultStructure: EncryptedVaultStructure = JSON.parse(fileContent);
-        
+
         // Check if it's an encrypted vault by looking for our specific structure
         if (vaultStructure.version && vaultStructure.encryptedData && vaultStructure.algorithm) {
           return this.decryptVaultData(vaultStructure);
@@ -245,15 +256,14 @@ export class EncryptedDataAdapter implements DataAccessPort {
         // If JSON parsing failed, it's likely corrupted
         throw new Error(`Failed to parse vault file: ${(parseError as Error).message}`);
       }
-      
+
       // If not encrypted, treat as plain JSON and auto-encrypt it
       const plainData = JSON.parse(fileContent);
-      
+
       // Auto-encrypt plain JSON vaults for security
       await this.saveVault(plainData);
-      
+
       return plainData;
-      
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`Vault file not found: ${this.config.vaultPath}`);
@@ -275,10 +285,14 @@ export class EncryptedDataAdapter implements DataAccessPort {
     try {
       const iv = Buffer.from(vaultStructure.iv, 'base64');
       const authTag = Buffer.from(vaultStructure.authTag, 'base64');
-      
-      const decipher = createDecipheriv(vaultStructure.algorithm, this.encryptionKey, iv) as DecipherGCM;
+
+      const decipher = createDecipheriv(
+        vaultStructure.algorithm,
+        this.encryptionKey,
+        iv
+      ) as DecipherGCM;
       decipher.setAuthTag(authTag);
-      
+
       let decrypted: string;
       try {
         decrypted = decipher.update(vaultStructure.encryptedData, 'base64', 'utf8');
@@ -290,14 +304,14 @@ export class EncryptedDataAdapter implements DataAccessPort {
         }
         throw new Error(`Failed to decrypt vault: ${(decryptError as Error).message}`);
       }
-      
+
       let data: any;
       try {
         data = JSON.parse(decrypted);
       } catch (jsonError) {
         throw new Error(`Failed to parse decrypted data: ${(jsonError as Error).message}`);
       }
-      
+
       // Verify checksum if provided
       if (vaultStructure.checksum) {
         const actualChecksum = createHash('sha256').update(decrypted, 'utf8').digest('hex');
@@ -305,14 +319,15 @@ export class EncryptedDataAdapter implements DataAccessPort {
           throw new Error('Data integrity check failed - checksum mismatch');
         }
       }
-      
+
       return data;
-      
     } catch (error) {
       // Re-throw our custom error messages, or wrap others
-      if ((error as Error).message.startsWith('Failed to decrypt vault:') || 
-          (error as Error).message.startsWith('Data integrity check failed') ||
-          (error as Error).message.startsWith('Failed to parse decrypted data:')) {
+      if (
+        (error as Error).message.startsWith('Failed to decrypt vault:') ||
+        (error as Error).message.startsWith('Data integrity check failed') ||
+        (error as Error).message.startsWith('Failed to parse decrypted data:')
+      ) {
         throw error;
       }
       throw new Error(`Failed to decrypt vault: ${(error as Error).message}`);
@@ -343,31 +358,31 @@ export class EncryptedDataAdapter implements DataAccessPort {
 
   private extractNestedData(data: any, path: string[]): any {
     let current = data;
-    
+
     for (const segment of path) {
       if (current === null || current === undefined) {
         return undefined;
       }
-      
+
       if (typeof current !== 'object') {
         return undefined;
       }
-      
+
       current = current[segment];
     }
-    
+
     return current;
   }
 
   private hasExplicitAccess(path: string[], requester: string, policies: AccessPolicy): boolean {
     const pathString = path.join('.');
-    
+
     // Check exact path
     if (policies.allowed_paths && policies.allowed_paths[pathString]) {
       const allowedRequesters = policies.allowed_paths[pathString];
       return allowedRequesters?.includes('*') || allowedRequesters?.includes(requester) || false;
     }
-    
+
     // Check wildcards
     if (policies.wildcard_paths) {
       for (const [pattern, allowedRequesters] of Object.entries(policies.wildcard_paths)) {
@@ -376,15 +391,13 @@ export class EncryptedDataAdapter implements DataAccessPort {
         }
       }
     }
-    
+
     return false;
   }
 
   private matchesWildcard(path: string, pattern: string): boolean {
     // Convert glob pattern to regex
-    const regex = new RegExp(
-      '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
-    );
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
     return regex.test(path);
   }
 

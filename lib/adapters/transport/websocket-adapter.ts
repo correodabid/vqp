@@ -32,7 +32,10 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
   private wss: WebSocketServer | undefined;
   private server?: Server;
   private connections = new Map<string, WebSocket>();
-  private pendingQueries = new Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }>();
+  private pendingQueries = new Map<
+    string,
+    { resolve: Function; reject: Function; timeout: NodeJS.Timeout }
+  >();
   private heartbeatInterval: NodeJS.Timeout | undefined;
 
   constructor(
@@ -45,7 +48,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
       heartbeatInterval: 30000, // 30 seconds
       connectionTimeout: 60000, // 60 seconds
       maxMessageSize: 1024 * 1024, // 1MB
-      ...config
+      ...config,
     };
   }
 
@@ -86,7 +89,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
             type: 'query',
             id: query.id,
             payload: query,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           };
           ws.send(JSON.stringify(message));
         });
@@ -94,7 +97,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
         ws.on('message', (data) => {
           try {
             const message: WebSocketMessage = JSON.parse(data.toString());
-            
+
             if (message.type === 'response' && message.id === query.id) {
               clearTimeout(timeout);
               ws.close();
@@ -119,7 +122,6 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
         ws.on('close', () => {
           clearTimeout(timeout);
         });
-
       } catch (error) {
         reject(error);
       }
@@ -139,8 +141,8 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
 
     // Wait for all responses (with timeout)
     const results = await Promise.allSettled(promises);
-    
-    results.forEach(result => {
+
+    results.forEach((result) => {
       if (result.status === 'fulfilled') {
         responses.push(result.value);
       }
@@ -149,14 +151,16 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
     return responses;
   }
 
-  async discoverPeers(capability: string): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>> {
+  async discoverPeers(
+    capability: string
+  ): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>> {
     // This would typically integrate with a discovery service
     // For now, return connected peers that advertise the capability
     const peers: Array<{ endpoint: string; did: string; capabilities: string[] }> = [];
-    
+
     // In a real implementation, this would query a discovery service
     // or maintain a registry of peer capabilities
-    
+
     return peers;
   }
 
@@ -179,7 +183,6 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
           clearTimeout(timeout);
           resolve(false);
         });
-
       } catch {
         resolve(false);
       }
@@ -212,7 +215,6 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
         this.wss.on('error', (error) => {
           reject(error);
         });
-
       } catch (error) {
         reject(error);
       }
@@ -282,7 +284,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
    */
   private handleConnection(ws: WebSocket, request: any): void {
     const connectionId = this.generateConnectionId();
-    
+
     // Check connection limit
     if (this.connections.size >= this.config.maxConnections!) {
       ws.close(1008, 'Too many connections');
@@ -297,7 +299,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
       try {
         // Convert data to string for size check
         const dataString = data.toString();
-        
+
         if (dataString.length > this.config.maxMessageSize!) {
           this.sendError(ws, 'MESSAGE_TOO_LARGE', 'Message exceeds size limit');
           return;
@@ -305,7 +307,6 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
 
         const message: WebSocketMessage = JSON.parse(dataString);
         await this.handleMessage(ws, message);
-
       } catch (error) {
         console.error('WebSocket message error:', error);
         this.sendError(ws, 'INVALID_MESSAGE', 'Failed to parse message');
@@ -327,7 +328,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
       type: 'ping',
       id: this.generateMessageId(),
       payload: { message: 'VQP WebSocket connection established' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -339,26 +340,26 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
       case 'query':
         await this.handleQueryMessage(ws, message);
         break;
-      
+
       case 'ping':
         this.sendMessage(ws, {
           type: 'pong',
           id: message.id,
           payload: { timestamp: new Date().toISOString() },
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         break;
-      
+
       case 'pong':
         // Handle pong for heartbeat
         break;
-      
+
       case 'response':
       case 'error':
         // Handle responses to our queries
         this.handleQueryResponse(message);
         break;
-      
+
       default:
         this.sendError(ws, 'UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${message.type}`);
     }
@@ -385,13 +386,17 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
         type: 'response',
         id: message.id,
         payload: response,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       console.error('Query processing error:', error);
       const vqpError = error as VQPError;
-      this.sendError(ws, vqpError.code || 'EVALUATION_ERROR', vqpError.message || 'Query processing failed', message.id);
+      this.sendError(
+        ws,
+        vqpError.code || 'EVALUATION_ERROR',
+        vqpError.message || 'Query processing failed',
+        message.id
+      );
     }
   }
 
@@ -403,7 +408,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
     if (pending) {
       clearTimeout(pending.timeout);
       this.pendingQueries.delete(message.id);
-      
+
       if (message.type === 'response') {
         pending.resolve(message.payload);
       } else {
@@ -428,7 +433,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
         type: 'query',
         id: query.id,
         payload: query,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       ws.send(JSON.stringify(message));
@@ -452,7 +457,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
       type: 'error',
       id: queryId || this.generateMessageId(),
       payload: { code, message },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -467,7 +472,7 @@ export class WebSocketTransportAdapter implements QueryPort, NetworkPort {
             type: 'ping',
             id: this.generateMessageId(),
             payload: { heartbeat: true },
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
         } else {
           this.connections.delete(connectionId);

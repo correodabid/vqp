@@ -4,7 +4,7 @@ import { CryptographicPort, NetworkPort } from './ports/secondary';
 
 /**
  * VQP Querier - High-level client for sending queries and verifying responses
- * 
+ *
  * This component combines query sending with response verification,
  * providing a convenient API for applications that need to query VQP responders.
  */
@@ -43,7 +43,10 @@ export class VQPQuerier {
   /**
    * Send query and verify response in one call
    */
-  async queryAndVerify(endpoint: string, query: VQPQuery): Promise<{
+  async queryAndVerify(
+    endpoint: string,
+    query: VQPQuery
+  ): Promise<{
     response: VQPResponse;
     verified: boolean;
     verificationDetails: {
@@ -53,14 +56,14 @@ export class VQPQuerier {
   }> {
     const response = await this.query(endpoint, query);
     const verificationResult = await this.verifier.verifyComplete(response, query.id);
-    
+
     return {
       response,
       verified: verificationResult.overall,
       verificationDetails: {
         cryptographicProof: verificationResult.cryptographicProof,
-        metadata: verificationResult.metadata
-      }
+        metadata: verificationResult.metadata,
+      },
     };
   }
 
@@ -74,7 +77,9 @@ export class VQPQuerier {
   /**
    * Discover responders with specific capabilities
    */
-  async discover(capability: string): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>> {
+  async discover(
+    capability: string
+  ): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>> {
     return await this.network.discoverPeers(capability);
   }
 }
@@ -89,8 +94,8 @@ export class QueryBuilder {
     query: {
       lang: 'jsonlogic@1.0.0' as const,
       vocab: '',
-      expr: {}
-    }
+      expr: {},
+    },
   };
 
   constructor() {
@@ -137,41 +142,37 @@ export class QueryBuilder {
    * Helper: Create age verification query
    */
   ageCheck(minAge: number): QueryBuilder {
-    return this
-      .vocabulary('vqp:identity:v1')
-      .expression({ '>=': [{ 'var': 'age' }, minAge] });
+    return this.vocabulary('vqp:identity:v1').expression({ '>=': [{ var: 'age' }, minAge] });
   }
 
   /**
    * Helper: Create citizenship check query
    */
   citizenshipCheck(country: string): QueryBuilder {
-    return this
-      .vocabulary('vqp:identity:v1')
-      .expression({ '==': [{ 'var': 'citizenship' }, country] });
+    return this.vocabulary('vqp:identity:v1').expression({
+      '==': [{ var: 'citizenship' }, country],
+    });
   }
 
   /**
    * Helper: Create income verification query
    */
   incomeCheck(minIncome: number): QueryBuilder {
-    return this
-      .vocabulary('vqp:financial:v1')
-      .expression({ '>=': [{ 'var': 'annual_income' }, minIncome] });
+    return this.vocabulary('vqp:financial:v1').expression({
+      '>=': [{ var: 'annual_income' }, minIncome],
+    });
   }
 
   /**
    * Helper: Create system health check
    */
   healthCheck(): QueryBuilder {
-    return this
-      .vocabulary('vqp:metrics:v1')
-      .expression({
-        'and': [
-          { '>=': [{ 'var': 'uptime_percentage_24h' }, 99] },
-          { '==': [{ 'var': 'health_status' }, 'healthy'] }
-        ]
-      });
+    return this.vocabulary('vqp:metrics:v1').expression({
+      and: [
+        { '>=': [{ var: 'uptime_percentage_24h' }, 99] },
+        { '==': [{ var: 'health_status' }, 'healthy'] },
+      ],
+    });
   }
 
   /**
@@ -181,7 +182,7 @@ export class QueryBuilder {
     if (!this.query.query?.vocab) {
       throw new Error('Vocabulary must be specified');
     }
-    
+
     if (!this.query.query?.expr || Object.keys(this.query.query.expr).length === 0) {
       throw new Error('Expression must be specified');
     }
@@ -193,9 +194,9 @@ export class QueryBuilder {
    * Generate a simple UUID v4
    */
   private generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }

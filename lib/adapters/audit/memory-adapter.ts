@@ -7,10 +7,10 @@ import { AuditPort } from '../../domain/ports/secondary.js';
 import { VQPQuery, VQPResponse, VQPError, AuditEntry } from '../../domain/types.js';
 
 export interface MemoryAuditConfig {
-  maxEntries?: number;           // Maximum number of entries to keep (default: 10000)
-  includeFullQuery?: boolean;    // Include full query in logs
+  maxEntries?: number; // Maximum number of entries to keep (default: 10000)
+  includeFullQuery?: boolean; // Include full query in logs
   includeFullResponse?: boolean; // Include full response in logs
-  autoCleanup?: boolean;         // Automatically remove old entries when maxEntries is reached
+  autoCleanup?: boolean; // Automatically remove old entries when maxEntries is reached
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
 }
 
@@ -31,8 +31,9 @@ export class MemoryAuditAdapter implements AuditPort {
   }
 
   async logQuery(query: VQPQuery, response: VQPResponse): Promise<void> {
-    const responseTime = new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
-    
+    const responseTime =
+      new Date(response.timestamp).getTime() - new Date(query.timestamp).getTime();
+
     const entry: AuditEntry = {
       timestamp: response.timestamp, // Use response timestamp for consistency
       event: 'query_processed',
@@ -43,8 +44,8 @@ export class MemoryAuditAdapter implements AuditPort {
         responder: response.responder,
         proofType: response.proof.type,
         ...(this.includeFullQuery && { fullQuery: query }),
-        ...(this.includeFullResponse && { fullResponse: response })
-      }
+        ...(this.includeFullResponse && { fullResponse: response }),
+      },
     };
 
     // Add optional fields only if they have values
@@ -72,13 +73,13 @@ export class MemoryAuditAdapter implements AuditPort {
         name: error.name,
         code: error.code,
         message: error.message,
-        details: error.details
+        details: error.details,
       } as any,
       metadata: {
         errorCode: error.code,
         errorMessage: error.message,
-        context: this.sanitizeContext(context)
-      }
+        context: this.sanitizeContext(context),
+      },
     };
 
     this.addEntry(entry);
@@ -99,45 +100,35 @@ export class MemoryAuditAdapter implements AuditPort {
     // Apply time range filter
     if (filters.startTime) {
       const startTime = new Date(filters.startTime);
-      filteredEntries = filteredEntries.filter(entry => 
-        new Date(entry.timestamp) >= startTime
-      );
+      filteredEntries = filteredEntries.filter((entry) => new Date(entry.timestamp) >= startTime);
     }
 
     if (filters.endTime) {
       const endTime = new Date(filters.endTime);
-      filteredEntries = filteredEntries.filter(entry => 
-        new Date(entry.timestamp) <= endTime
-      );
+      filteredEntries = filteredEntries.filter((entry) => new Date(entry.timestamp) <= endTime);
     }
 
     // Apply querier filter
     if (filters.querier) {
-      filteredEntries = filteredEntries.filter(entry => 
-        entry.querier === filters.querier
-      );
+      filteredEntries = filteredEntries.filter((entry) => entry.querier === filters.querier);
     }
 
     // Apply event filter
     if (filters.event) {
-      filteredEntries = filteredEntries.filter(entry => 
-        entry.event === filters.event
-      );
+      filteredEntries = filteredEntries.filter((entry) => entry.event === filters.event);
     }
 
     // Sort by timestamp (newest first)
-    return filteredEntries.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    return filteredEntries.sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
   }
 
   async purgeOldEntries(olderThan: string): Promise<number> {
     const cutoffTime = new Date(olderThan);
     const originalCount = this.entries.length;
-    
-    this.entries = this.entries.filter(entry => 
-      new Date(entry.timestamp) > cutoffTime
-    );
+
+    this.entries = this.entries.filter((entry) => new Date(entry.timestamp) > cutoffTime);
 
     return originalCount - this.entries.length;
   }
@@ -176,22 +167,22 @@ export class MemoryAuditAdapter implements AuditPort {
     } = {
       entryCount: this.entries.length,
       maxEntries: this.maxEntries,
-      memoryUsageBytes
+      memoryUsageBytes,
     };
 
     if (this.entries.length > 0) {
       const oldestEntry = this.entries[this.entries.length - 1];
       const newestEntry = this.entries[0];
-      
+
       if (oldestEntry) {
         stats.oldestEntry = oldestEntry.timestamp;
       }
-      
+
       if (newestEntry) {
         stats.newestEntry = newestEntry.timestamp;
       }
     }
-    
+
     return stats;
   }
 
@@ -212,22 +203,22 @@ export class MemoryAuditAdapter implements AuditPort {
     // Create a sanitized copy of the context
     try {
       const sanitized = JSON.parse(JSON.stringify(context));
-      
+
       // Remove potentially sensitive fields
       if (typeof sanitized === 'object') {
         delete sanitized.privateKey;
         delete sanitized.password;
         delete sanitized.secret;
         delete sanitized.token;
-        
+
         // Recursively sanitize nested objects
-        Object.keys(sanitized).forEach(key => {
+        Object.keys(sanitized).forEach((key) => {
           if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
             sanitized[key] = this.sanitizeContext(sanitized[key]);
           }
         });
       }
-      
+
       return sanitized;
     } catch {
       // If serialization fails, return a safe representation
@@ -250,7 +241,7 @@ export class MemoryAuditAdapter implements AuditPort {
    * Get entries by event type
    */
   getEntriesByEvent(eventType: AuditEntry['event']): AuditEntry[] {
-    return this.entries.filter(entry => entry.event === eventType);
+    return this.entries.filter((entry) => entry.event === eventType);
   }
 
   /**
@@ -265,26 +256,26 @@ export class MemoryAuditAdapter implements AuditPort {
    */
   searchEntries(searchTerm: string): AuditEntry[] {
     const term = searchTerm.toLowerCase();
-    
-    return this.entries.filter(entry => {
+
+    return this.entries.filter((entry) => {
       // Search in queryId
       if (entry.queryId?.toLowerCase().includes(term)) return true;
-      
+
       // Search in querier
       if (entry.querier?.toLowerCase().includes(term)) return true;
-      
+
       // Search in metadata
       if (entry.metadata) {
         const metadataString = JSON.stringify(entry.metadata).toLowerCase();
         if (metadataString.includes(term)) return true;
       }
-      
+
       // Search in error details
       if (entry.error) {
         const errorString = JSON.stringify(entry.error).toLowerCase();
         if (errorString.includes(term)) return true;
       }
-      
+
       return false;
     });
   }

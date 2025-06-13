@@ -53,7 +53,7 @@ export function isValid(expression: any): boolean {
     if (typeof expression !== 'object' || expression === null) {
       return false;
     }
-    
+
     // Try to apply with empty data to check for syntax errors
     apply(expression, {});
     return true;
@@ -68,7 +68,7 @@ export function isValid(expression: any): boolean {
  */
 export function sanitize(expression: JSONLogicExpression): JSONLogicExpression {
   const dangerousOps = ['eval', 'function', 'constructor'];
-  
+
   const sanitizeRecursive = (obj: any): any => {
     if (Array.isArray(obj)) {
       return obj.map(sanitizeRecursive);
@@ -83,7 +83,7 @@ export function sanitize(expression: JSONLogicExpression): JSONLogicExpression {
     }
     return obj;
   };
-  
+
   return sanitizeRecursive(expression);
 }
 

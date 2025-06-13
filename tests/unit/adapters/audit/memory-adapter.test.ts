@@ -16,7 +16,7 @@ describe('MemoryAuditAdapter', () => {
     adapter = new MemoryAuditAdapter({
       maxEntries: 100,
       includeFullQuery: false,
-      includeFullResponse: false
+      includeFullResponse: false,
     });
 
     mockQuery = {
@@ -28,8 +28,8 @@ describe('MemoryAuditAdapter', () => {
       query: {
         lang: 'jsonlogic@1.0.0',
         vocab: 'vqp:identity:v1',
-        expr: { '>=': [{ 'var': 'age' }, 18] }
-      }
+        expr: { '>=': [{ var: 'age' }, 18] },
+      },
     };
 
     mockResponse = {
@@ -42,8 +42,8 @@ describe('MemoryAuditAdapter', () => {
         type: 'signature',
         algorithm: 'ed25519',
         publicKey: 'z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK',
-        signature: '0x304402207fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0'
-      }
+        signature: '0x304402207fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0',
+      },
     };
   });
 
@@ -65,14 +65,14 @@ describe('MemoryAuditAdapter', () => {
   it('should include full query and response when configured', async () => {
     const fullAdapter = new MemoryAuditAdapter({
       includeFullQuery: true,
-      includeFullResponse: true
+      includeFullResponse: true,
     });
 
     await fullAdapter.logQuery(mockQuery, mockResponse);
 
     const entries = await fullAdapter.getAuditTrail();
     const entry = entries[0];
-    
+
     assert.deepEqual(entry.metadata?.fullQuery, mockQuery);
     assert.deepEqual(entry.metadata?.fullResponse, mockResponse);
   });
@@ -99,14 +99,14 @@ describe('MemoryAuditAdapter', () => {
       privateKey: 'secret-key',
       password: 'secret-password',
       operation: 'sign',
-      publicData: 'safe-data'
+      publicData: 'safe-data',
     };
 
     await adapter.logError(error, contextWithSensitiveData);
 
     const entries = await adapter.getAuditTrail();
     const entry = entries[0];
-    
+
     assert.equal(entry.metadata?.context.privateKey, undefined);
     assert.equal(entry.metadata?.context.password, undefined);
     assert.equal(entry.metadata?.context.operation, 'sign');
@@ -115,36 +115,36 @@ describe('MemoryAuditAdapter', () => {
 
   it('should filter by querier', async () => {
     await adapter.logQuery(mockQuery, mockResponse);
-    
+
     const query2 = { ...mockQuery, id: 'query-2', requester: 'did:web:other.com' };
     const response2 = { ...mockResponse, queryId: 'query-2', timestamp: '2025-06-12T11:00:00Z' };
     await adapter.logQuery(query2, response2);
 
     const entries = await adapter.getAuditTrail({
-      querier: 'did:web:other.com'
+      querier: 'did:web:other.com',
     });
-    
+
     assert.equal(entries.length, 1);
     assert.equal(entries[0].querier, 'did:web:other.com');
   });
 
   it('should filter by event type', async () => {
     await adapter.logQuery(mockQuery, mockResponse);
-    
+
     const error = new VQPError('INVALID_QUERY', 'Test error');
     await adapter.logError(error, {});
 
     const entries = await adapter.getAuditTrail({
-      event: 'error_occurred'
+      event: 'error_occurred',
     });
-    
+
     assert.equal(entries.length, 1);
     assert.equal(entries[0].event, 'error_occurred');
   });
 
   it('should remove entries older than specified date', async () => {
     await adapter.logQuery(mockQuery, mockResponse);
-    
+
     // Add an older entry by manipulating the timestamp
     const oldQuery = { ...mockQuery, timestamp: '2025-06-10T10:00:00Z' };
     const oldResponse = { ...mockResponse, timestamp: '2025-06-10T10:00:01Z' };
@@ -160,7 +160,7 @@ describe('MemoryAuditAdapter', () => {
   it('should limit entries to maxEntries when autoCleanup is enabled', async () => {
     const limitedAdapter = new MemoryAuditAdapter({
       maxEntries: 2,
-      autoCleanup: true
+      autoCleanup: true,
     });
 
     // Add 3 entries
@@ -175,10 +175,10 @@ describe('MemoryAuditAdapter', () => {
 
   it('should provide memory usage statistics', () => {
     const stats = adapter.getMemoryStats();
-    
-    assert.ok(stats.hasOwnProperty('entryCount'));
-    assert.ok(stats.hasOwnProperty('maxEntries'));
-    assert.ok(stats.hasOwnProperty('memoryUsageBytes'));
+
+    assert.ok(Object.prototype.hasOwnProperty.call(stats, 'entryCount'));
+    assert.ok(Object.prototype.hasOwnProperty.call(stats, 'maxEntries'));
+    assert.ok(Object.prototype.hasOwnProperty.call(stats, 'memoryUsageBytes'));
     assert.equal(typeof stats.entryCount, 'number');
     assert.equal(typeof stats.maxEntries, 'number');
     assert.equal(typeof stats.memoryUsageBytes, 'number');
@@ -194,13 +194,13 @@ describe('MemoryAuditAdapter', () => {
 
   it('should get entries by event type', async () => {
     await adapter.logQuery(mockQuery, mockResponse);
-    
+
     const error = new VQPError('INVALID_QUERY', 'Test error');
     await adapter.logError(error, {});
 
     const queryEntries = adapter.getEntriesByEvent('query_processed');
     const errorEntries = adapter.getEntriesByEvent('error_occurred');
-    
+
     assert.equal(queryEntries.length, 1);
     assert.equal(errorEntries.length, 1);
     assert.equal(queryEntries[0].event, 'query_processed');
@@ -209,18 +209,18 @@ describe('MemoryAuditAdapter', () => {
 
   it('should search entries by term', async () => {
     await adapter.logQuery(mockQuery, mockResponse);
-    
+
     const error = new VQPError('INVALID_QUERY', 'Test error');
     await adapter.logError(error, {});
 
     // Search by queryId
     const queryResults = adapter.searchEntries(mockQuery.id);
     assert.equal(queryResults.length, 1);
-    
+
     // Search by vocabulary
     const vocabResults = adapter.searchEntries('identity');
     assert.equal(vocabResults.length, 1);
-    
+
     // Search by error code
     const errorResults = adapter.searchEntries('INVALID_QUERY');
     assert.equal(errorResults.length, 1);

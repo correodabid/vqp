@@ -3,15 +3,9 @@
  * This service is completely isolated from external concerns
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import * as jsonlogic from '../vendor/jsonlogic.js';
 import { VQPQuery, VQPResponse, VQPError } from './types.js';
-import {
-  DataAccessPort,
-  CryptographicPort,
-  VocabularyPort,
-  AuditPort
-} from './ports/secondary.js';
+import { DataAccessPort, CryptographicPort, VocabularyPort, AuditPort } from './ports/secondary.js';
 
 export class VQPService {
   constructor(
@@ -40,7 +34,10 @@ export class VQPService {
       // 2. Resolve and validate vocabulary
       const vocabulary = await this.vocabulary.resolveVocabulary(query.query.vocab);
       if (!vocabulary) {
-        throw this.createError('VOCABULARY_NOT_FOUND', `Vocabulary not found: ${query.query.vocab}`);
+        throw this.createError(
+          'VOCABULARY_NOT_FOUND',
+          `Vocabulary not found: ${query.query.vocab}`
+        );
       }
 
       // 3. Check if vocabulary is allowed
@@ -81,20 +78,20 @@ export class VQPService {
         timestamp: responseTimestamp,
         responder: responderDID,
         result,
-        proof
+        proof,
       };
 
       // 11. Log successful query processing
       await this.audit.logQuery(query, response);
 
       return response;
-
     } catch (error) {
       // Log error and re-throw
-      const vqpError = error instanceof Error ? 
-        this.createError('EVALUATION_ERROR', error.message) : 
-        error as VQPError;
-      
+      const vqpError =
+        error instanceof Error
+          ? this.createError('EVALUATION_ERROR', error.message)
+          : (error as VQPError);
+
       await this.audit.logError(vqpError, { query });
       throw vqpError;
     }
@@ -199,17 +196,19 @@ export class VQPService {
   /**
    * Gather data for all required paths and reconstruct for vocabulary format
    */
-  private async gatherData(paths: string[][], vocabularyUri?: string): Promise<Record<string, any>> {
+  private async gatherData(
+    paths: string[][],
+    vocabularyUri?: string
+  ): Promise<Record<string, any>> {
     const data: Record<string, any> = {};
 
     for (const path of paths) {
       try {
         const value = await this.dataAccess.getData(path);
-        
+
         // Map vault path back to vocabulary field for JSONLogic evaluation
         const vocabularyField = this.mapVaultPathToVocabulary(path, vocabularyUri);
         data[vocabularyField] = value;
-        
       } catch (error) {
         // If data is not available, continue - JSONLogic will handle undefined
         console.warn(`Data not available for path: ${path.join('.')}`);
@@ -227,7 +226,7 @@ export class VQPService {
     if (path.length >= 2 && vocabularyUri) {
       const category = path[0];
       const field = path[1];
-      
+
       if (category && field) {
         switch (vocabularyUri) {
           case 'vqp:identity:v1':
@@ -242,7 +241,7 @@ export class VQPService {
         }
       }
     }
-    
+
     // Fallback: use last segment or join with dots
     const lastSegment = path[path.length - 1];
     return path.length === 1 && lastSegment ? lastSegment : path.join('.');
@@ -264,16 +263,16 @@ export class VQPService {
    * Generate cryptographic proof for the response
    */
   private async generateProof(
-    query: VQPQuery, 
-    result: any, 
-    timestamp: string, 
+    query: VQPQuery,
+    result: any,
+    timestamp: string,
     responderDID: string
   ): Promise<any> {
     const responsePayload = {
       queryId: query.id,
       result,
       timestamp,
-      responder: responderDID
+      responder: responderDID,
     };
 
     const dataToSign = Buffer.from(JSON.stringify(responsePayload));

@@ -22,7 +22,7 @@ import {
   DataAccessPort,
   CryptographicPort,
   VocabularyPort,
-  AuditPort
+  AuditPort,
 } from './domain/ports/secondary.js';
 
 export interface DataConfig {
@@ -121,12 +121,12 @@ export class VQPSystem {
    */
   async start(): Promise<void> {
     console.log('🚀 Starting VQP System...');
-    
+
     // Start transport
     if (this.transportAdapter instanceof HTTPTransportAdapter) {
       await this.transportAdapter.start();
     }
-    
+
     console.log('✅ VQP System started successfully');
   }
 
@@ -135,11 +135,11 @@ export class VQPSystem {
    */
   async stop(): Promise<void> {
     console.log('🛑 Stopping VQP System...');
-    
+
     if (this.transportAdapter instanceof HTTPTransportAdapter) {
       await this.transportAdapter.stop();
     }
-    
+
     console.log('✅ VQP System stopped');
   }
 
@@ -191,8 +191,8 @@ export class VQPSystem {
         crypto: this.cryptoAdapter.constructor.name,
         vocabulary: this.vocabularyAdapter.constructor.name,
         audit: this.auditAdapter.constructor.name,
-        transport: this.transportAdapter.constructor.name
-      }
+        transport: this.transportAdapter.constructor.name,
+      },
     };
   }
 
@@ -201,14 +201,15 @@ export class VQPSystem {
    */
   private createDataAdapter(config: DataConfig): DataAccessPort {
     switch (config.type) {
-      case 'filesystem':
+      case 'filesystem': {
         const fsConfig: FileSystemDataConfig = {
-          vaultPath: config.vaultPath
+          vaultPath: config.vaultPath,
         };
         if (config.policiesPath) {
           fsConfig.policiesPath = config.policiesPath;
         }
         return new FileSystemDataAdapter(fsConfig);
+      }
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown data adapter type: ${config.type}`);
     }
@@ -219,12 +220,13 @@ export class VQPSystem {
    */
   private createCryptoAdapter(config: CryptoConfig): CryptographicPort {
     switch (config.type) {
-      case 'software':
+      case 'software': {
         const cryptoConfig: SoftwareCryptoConfig = {};
         if (config.keyPairs) {
           cryptoConfig.keyPairs = config.keyPairs;
         }
         return new SoftwareCryptoAdapter(cryptoConfig);
+      }
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown crypto adapter type: ${config.type}`);
     }
@@ -235,7 +237,7 @@ export class VQPSystem {
    */
   private createVocabularyAdapter(config: VocabularyConfig): VocabularyPort {
     switch (config.type) {
-      case 'http':
+      case 'http': {
         const vocabConfig: HTTPVocabularyConfig = {};
         if (config.allowedVocabularies) {
           vocabConfig.allowedVocabularies = config.allowedVocabularies;
@@ -244,8 +246,12 @@ export class VQPSystem {
           vocabConfig.cacheTimeoutMs = config.cacheTimeoutMs;
         }
         return new HTTPVocabularyAdapter(vocabConfig);
+      }
       default:
-        throw new VQPError('CONFIGURATION_ERROR', `Unknown vocabulary adapter type: ${config.type}`);
+        throw new VQPError(
+          'CONFIGURATION_ERROR',
+          `Unknown vocabulary adapter type: ${config.type}`
+        );
     }
   }
 
@@ -254,7 +260,7 @@ export class VQPSystem {
    */
   private createAuditAdapter(config: AuditConfig): AuditPort {
     switch (config.type) {
-      case 'console':
+      case 'console': {
         const consoleConfig: ConsoleAuditConfig = {};
         if (config.logLevel) {
           consoleConfig.logLevel = config.logLevel;
@@ -263,10 +269,11 @@ export class VQPSystem {
           consoleConfig.maxEntries = config.maxEntries;
         }
         return new ConsoleAuditAdapter(consoleConfig);
-      
-      case 'file':
+      }
+
+      case 'file': {
         const fileConfig: FileAuditConfig = {
-          logDirectory: config.logDirectory || './logs/audit'
+          logDirectory: config.logDirectory || './logs/audit',
         };
         if (config.logLevel) {
           fileConfig.logLevel = config.logLevel;
@@ -287,8 +294,9 @@ export class VQPSystem {
           fileConfig.fileNamePattern = config.fileNamePattern;
         }
         return new FileAuditAdapter(fileConfig);
-      
-      case 'memory':
+      }
+
+      case 'memory': {
         const memoryConfig: MemoryAuditConfig = {};
         if (config.logLevel) {
           memoryConfig.logLevel = config.logLevel;
@@ -306,7 +314,8 @@ export class VQPSystem {
           memoryConfig.autoCleanup = config.autoCleanup;
         }
         return new MemoryAuditAdapter(memoryConfig);
-      
+      }
+
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown audit adapter type: ${config.type}`);
     }
@@ -317,14 +326,14 @@ export class VQPSystem {
    */
   private createTransportAdapter(config: TransportConfig): QueryPort {
     switch (config.type) {
-      case 'http':
+      case 'http': {
         const transportConfig: {
           port?: number;
           corsOrigins?: string[];
           rateLimitWindowMs?: number;
           rateLimitMax?: number;
         } = {};
-        
+
         if (config.port) {
           transportConfig.port = config.port;
         }
@@ -337,8 +346,9 @@ export class VQPSystem {
         if (config.rateLimitMax) {
           transportConfig.rateLimitMax = config.rateLimitMax;
         }
-        
+
         return new HTTPTransportAdapter(this.vqpService, transportConfig);
+      }
       default:
         throw new VQPError('CONFIGURATION_ERROR', `Unknown transport adapter type: ${config.type}`);
     }
@@ -353,22 +363,22 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
     data: {
       type: 'filesystem',
       vaultPath: './examples/sample-vault.json',
-      policiesPath: './examples/access-policies.json'
+      policiesPath: './examples/access-policies.json',
     },
     crypto: {
-      type: 'software'
+      type: 'software',
     },
     vocabulary: {
-      type: 'http'
+      type: 'http',
     },
     audit: {
       type: 'console',
-      logLevel: 'info'
+      logLevel: 'info',
     },
     transport: {
       type: 'http',
-      port: 8080
-    }
+      port: 8080,
+    },
   };
 
   // Deep merge overrides
