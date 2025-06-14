@@ -36,7 +36,6 @@ This document outlines the security architecture, threat model, and security con
 1. **Responders**: Trusted to evaluate queries honestly over their declared data
 2. **Cryptographic Primitives**: Standard algorithms (Ed25519, SHA-256) are secure
 3. **Key Management**: Private keys are properly protected by their owners
-4. **Transport Security**: Communications use TLS or equivalent protection
 
 ### Threat Actors
 
@@ -227,7 +226,6 @@ def main(private field age, field threshold) -> field:
 
 #### ChaCha20-Poly1305
 - Vault data encryption
-- Message encryption for transport
 - Authenticated encryption
 
 #### AES-256-GCM
@@ -272,7 +270,6 @@ def main(private field age, field threshold) -> field:
 
 **Implementation**:
 - Ephemeral keys for sessions
-- Perfect forward secrecy in transport
 - Regular key rotation
 - Secure deletion of temporary data
 

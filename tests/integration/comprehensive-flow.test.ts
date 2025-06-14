@@ -71,10 +71,6 @@ describe('VQP Comprehensive Flow Tests', () => {
         type: 'console',
         logLevel: 'info',
       },
-      transport: {
-        type: 'http',
-        port: 3000,
-      },
     });
   });
 

@@ -11,14 +11,11 @@ async function runCompleteDemo() {
         crypto: {type:'software'},
         vocabulary: {type:'http'},
         audit: {type:'console', logLevel: 'info'},
-        transport: {type:'http', port: 8080},
         evaluation:{
           type: 'jsonlogic',
         }
     });
     
-    await vqpSystem.start();
-
     const vqpService = vqpSystem.getService();
 
     const query = {
@@ -48,7 +45,6 @@ async function runCompleteDemo() {
       responseId: response.queryId
     });
 
-    await vqpSystem.stop();
 }
 
 /**
@@ -74,13 +70,11 @@ async function demoWithQueryBuilder() {
         crypto: {type:'software'},
         vocabulary: {type:'http'},
         audit: {type:'console', logLevel: 'info'},
-        transport: {type:'http', port: 8080},
         evaluation:{
           type: 'jsonlogic',
         }
     });
     
-    await vqpSystem.start();
     
     const { QueryBuilder } = await import('../lib');
     
@@ -100,7 +94,6 @@ async function demoWithQueryBuilder() {
     
     console.log('✅ Complete verification:', verificationResult);
     
-    await vqpSystem.stop();
 }
 
 // Run both demos

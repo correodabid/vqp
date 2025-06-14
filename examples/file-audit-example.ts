@@ -45,10 +45,6 @@ async function fileAuditExample() {
       logLevel: 'info',
       fileNamePattern: 'vqp-audit-{date}.log'
     },
-    transport: {
-      type: 'http',
-      port: 3000
-    },
     evaluation: {
       type: 'jsonlogic',
     }

@@ -266,14 +266,11 @@ func main() {
 
 #### JavaScript
 ```javascript
-import { VQPQuerier, QueryBuilder } from '@vqp/core';
-
-const querier = new VQPQuerier({
-  identity: 'did:web:my-service.com'
-});
+import { QueryBuilder, VQPVerifier, SoftwareCryptoAdapter } from '@vqp/core';
 
 // Build a query
 const query = new QueryBuilder()
+  .requester('did:web:my-service.com')
   .target('did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK')
   .vocabulary('vqp:identity:v1')
   .expression({
@@ -284,23 +281,34 @@ const query = new QueryBuilder()
   })
   .build();
 
-// Send query
-const response = await querier.query('https://target.example.com/vqp', query);
+// Send query using fetch
+const response = await fetch('https://target.example.com/vqp', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(query)
+});
+
+const vqpResponse = await response.json();
 
 // Verify response
-if (await querier.verify(response)) {
-  console.log('Verified result:', response.result);
+const crypto = new SoftwareCryptoAdapter();
+const verifier = new VQPVerifier(crypto);
+const verificationResult = await verifier.verifyComplete(vqpResponse, query.id);
+
+if (verificationResult.overall) {
+  console.log('Verified result:', vqpResponse.result);
 }
 ```
 
 #### Python
 ```python
-from vqp_core import VQPQuerier, QueryBuilder
-
-querier = VQPQuerier(identity='did:web:my-service.com')
+# Note: This is a conceptual example. Python implementation would follow similar patterns
+import httpx
+from vqp_core import QueryBuilder, VQPVerifier, SoftwareCryptoAdapter
 
 # Build query
 query = (QueryBuilder()
+    .requester('did:web:my-service.com')
     .target('did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK')
     .vocabulary('vqp:identity:v1') 
     .expression({
@@ -312,28 +320,47 @@ query = (QueryBuilder()
     .build())
 
 # Send query
-response = await querier.query('https://target.example.com/vqp', query)
+async with httpx.AsyncClient() as client:
+    response = await client.post('https://target.example.com/vqp', json=query)
+    vqp_response = response.json()
 
 # Verify response
-if await querier.verify(response):
-    print(f'Verified result: {response.result}')
+crypto = SoftwareCryptoAdapter()
+verifier = VQPVerifier(crypto)
+verification_result = await verifier.verify_complete(vqp_response, query['id'])
+
+if verification_result.overall:
+    print(f'Verified result: {vqp_response["result"]}')
 ```
 
 ### Batch Queries
 
 ```javascript
+// Build multiple queries
 const queries = [
-  queryBuilder.age_check(18),
-  queryBuilder.citizenship_check('US'),
-  queryBuilder.credential_check('drivers_license')
+  new QueryBuilder().requester('did:web:app.com').ageCheck(18).build(),
+  new QueryBuilder().requester('did:web:app.com').citizenshipCheck('US').build()
 ];
 
-const responses = await querier.batch_query(endpoint, queries);
+// Send queries in parallel
+const responses = await Promise.all(
+  queries.map(query => 
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query)
+    }).then(res => res.json())
+  )
+);
 
-// Process responses
-for (const [query, response] of responses) {
-  if (await querier.verify(response)) {
-    console.log(`Query ${query.id}: ${response.result}`);
+// Verify each response
+const crypto = new SoftwareCryptoAdapter();
+const verifier = new VQPVerifier(crypto);
+
+for (let i = 0; i < queries.length; i++) {
+  const verification = await verifier.verifyComplete(responses[i], queries[i].id);
+  if (verification.overall) {
+    console.log(`Query ${queries[i].id}: ${responses[i].result}`);
   }
 }
 ```
@@ -634,26 +661,25 @@ describe('VQP Responder', () => {
 
 ```python
 import pytest
-from vqp_core import VQPQuerier, VQPResponder
+from vqp_core import VQPResponder, VQPVerifier, QueryBuilder, SoftwareCryptoAdapter
 
 @pytest.mark.asyncio
 async def test_full_vqp_flow():
     # Setup responder
     responder = VQPResponder(vault={'age': 25}, signer=test_signer)
     
-    # Setup querier
-    querier = VQPQuerier(identity='test-querier')
-    
     # Build query
-    query = QueryBuilder().age_check(18).build()
+    query = QueryBuilder().requester('test-querier').age_check(18).build()
     
     # Simulate query/response
     response = await responder.handle_query(query)
     
     # Verify response
-    is_valid = await querier.verify(response)
+    crypto = SoftwareCryptoAdapter()
+    verifier = VQPVerifier(crypto)
+    is_valid = await verifier.verify_complete(response, query['id'])
     
-    assert is_valid
+    assert is_valid.overall
     assert response.result is True
 ```
 
@@ -699,9 +725,6 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.json()
   ),
-  transports: [
-    new winston.transports.File({ filename: 'vqp-audit.log' })
-  ]
 });
 
 responder.on('query', (query) => {

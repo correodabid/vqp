@@ -34,7 +34,6 @@ This document outlines the development roadmap for the Verifiable Query Protocol
 - [ ] JavaScript/TypeScript SDK (`@vqp/core`)
 - [ ] Python SDK (`vqp-python`)
 - [ ] Go SDK (`vqp-go`)
-- [ ] HTTP transport layer
 - [ ] Comprehensive test suite
 - [ ] Performance benchmarks
 - [ ] Docker containers
@@ -109,7 +108,6 @@ This document outlines the development roadmap for the Verifiable Query Protocol
 - Query/response message format
 - Digital signature verification
 - Vocabulary resolution
-- Basic transport (HTTP)
 - Simple evaluation engine
 
 **Acceptance Criteria**:

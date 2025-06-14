@@ -5,13 +5,9 @@
 
 import { VQPService } from './domain/vqp-service.js';
 import { VQPVerifier } from './domain/vqp-verifier.js';
-import { VQPQuerier } from './domain/vqp-querier.js';
 import { VQPError, VQPResponse } from './domain/types.js';
 
 // Adapters
-import { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';
-import { MemoryTransportAdapter } from './adapters/transport/memory-adapter.js';
-import { WebSocketTransportAdapter } from './adapters/transport/websocket-adapter.js';
 import { FileSystemDataAdapter, FileSystemDataConfig } from './adapters/data/filesystem-adapter.js';
 import { SoftwareCryptoAdapter, SoftwareCryptoConfig } from './adapters/crypto/software-adapter.js';
 import { SnarkjsCryptoAdapter, SnarkjsConfig } from './adapters/crypto/snarkjs-adapter.js';
@@ -25,13 +21,11 @@ import {
 } from './adapters/evaluation/jsonlogic-adapter.js';
 
 // Types
-import { QueryPort } from './domain/ports/primary.js';
 import {
   DataAccessPort,
   CryptographicPort,
   VocabularyPort,
   AuditPort,
-  NetworkPort,
   QueryEvaluationPort,
 } from './domain/ports/secondary.js';
 
@@ -71,15 +65,6 @@ export interface AuditConfig {
   config?: any; // Allow additional configuration
 }
 
-export interface TransportConfig {
-  type: 'http' | 'memory';
-  port?: number;
-  corsOrigins?: string[];
-  rateLimitWindowMs?: number;
-  rateLimitMax?: number;
-  config?: any; // Allow additional configuration
-}
-
 export interface EvaluationConfig {
   type: 'jsonlogic';
   config?: any; // Allow additional configuration for future evaluation engines
@@ -90,7 +75,6 @@ export interface VQPSystemConfig {
   crypto: CryptoConfig;
   vocabulary: VocabularyConfig;
   audit: AuditConfig;
-  transport: TransportConfig;
   evaluation: EvaluationConfig;
 }
 
@@ -102,7 +86,6 @@ export interface SystemStatus {
     crypto: string;
     vocabulary: string;
     audit: string;
-    transport: string;
   };
 }
 
@@ -115,7 +98,6 @@ export class VQPSystem {
   private cryptoAdapter: CryptographicPort;
   private vocabularyAdapter: VocabularyPort;
   private auditAdapter: AuditPort;
-  private transportAdapter: QueryPort;
   private queryEvaluationAdapter: QueryEvaluationPort;
   private startTime: number = Date.now();
 
@@ -135,45 +117,6 @@ export class VQPSystem {
       this.auditAdapter,
       this.queryEvaluationAdapter
     );
-
-    // Create transport adapter (primary adapter)
-    this.transportAdapter = this.createTransportAdapter(config.transport);
-  }
-
-  /**
-   * Initialize the VQP system (async operations)
-   */
-  async initialize(): Promise<void> {
-    // Any async initialization can be done here
-    // For now, just a simple ready message
-    console.log('✅ VQP System initialized');
-  }
-
-  /**
-   * Start the VQP system
-   */
-  async start(): Promise<void> {
-    console.log('🚀 Starting VQP System...');
-
-    // Start transport
-    if (this.transportAdapter instanceof HTTPTransportAdapter) {
-      await this.transportAdapter.start();
-    }
-
-    console.log('✅ VQP System started successfully');
-  }
-
-  /**
-   * Stop the VQP system
-   */
-  async stop(): Promise<void> {
-    console.log('🛑 Stopping VQP System...');
-
-    if (this.transportAdapter instanceof HTTPTransportAdapter) {
-      await this.transportAdapter.stop();
-    }
-
-    console.log('✅ VQP System stopped');
   }
 
   /**
@@ -199,13 +142,6 @@ export class VQPSystem {
   }
 
   /**
-   * Get the transport adapter for direct access
-   */
-  getTransportAdapter(): QueryPort {
-    return this.transportAdapter;
-  }
-
-  /**
    * Get the audit adapter for direct access
    */
   getAuditAdapter(): AuditPort {
@@ -224,7 +160,6 @@ export class VQPSystem {
         crypto: this.cryptoAdapter.constructor.name,
         vocabulary: this.vocabularyAdapter.constructor.name,
         audit: this.auditAdapter.constructor.name,
-        transport: this.transportAdapter.constructor.name,
       },
     };
   }
@@ -362,42 +297,6 @@ export class VQPSystem {
   }
 
   /**
-   * Create transport adapter based on configuration
-   */
-  private createTransportAdapter(config: TransportConfig): QueryPort {
-    switch (config.type) {
-      case 'http': {
-        const transportConfig: {
-          port?: number;
-          corsOrigins?: string[];
-          rateLimitWindowMs?: number;
-          rateLimitMax?: number;
-        } = {};
-
-        if (config.port) {
-          transportConfig.port = config.port;
-        }
-        if (config.corsOrigins) {
-          transportConfig.corsOrigins = config.corsOrigins;
-        }
-        if (config.rateLimitWindowMs) {
-          transportConfig.rateLimitWindowMs = config.rateLimitWindowMs;
-        }
-        if (config.rateLimitMax) {
-          transportConfig.rateLimitMax = config.rateLimitMax;
-        }
-
-        return new HTTPTransportAdapter(this.vqpService, transportConfig);
-      }
-      case 'memory': {
-        return new MemoryTransportAdapter(this.vqpService, config.config || {});
-      }
-      default:
-        throw new VQPError('CONFIGURATION_ERROR', `Unknown transport adapter type: ${config.type}`);
-    }
-  }
-
-  /**
    * Create evaluation adapter based on configuration
    */
   private createEvaluationAdapter(config: EvaluationConfig): QueryEvaluationPort {
@@ -443,10 +342,6 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
       type: 'console',
       logLevel: 'info',
     },
-    transport: {
-      type: 'http',
-      port: 8080,
-    },
     evaluation: {
       type: 'jsonlogic',
     },
@@ -466,53 +361,11 @@ export function createVQPSystem(overrides: Partial<VQPSystemConfig> = {}): VQPSy
   if (overrides.audit) {
     config.audit = { ...defaultConfig.audit, ...overrides.audit };
   }
-  if (overrides.transport) {
-    config.transport = { ...defaultConfig.transport, ...overrides.transport };
-  }
   if (overrides.evaluation) {
     config.evaluation = { ...defaultConfig.evaluation, ...overrides.evaluation };
   }
 
   return new VQPSystem(config);
-}
-
-/**
- * Simple configuration interface for creating a VQPQuerier
- */
-export interface VQPQuerierConfig {
-  identity: string;
-  crypto?: {
-    type?: 'software';
-    keyPath?: string;
-  };
-  network?: {
-    type?: 'websocket';
-    timeout?: number;
-  };
-}
-
-/**
- * Factory function to create a VQPQuerier with simple configuration
- * This provides an easier API than using the constructor directly
- */
-export function createVQPQuerier(config: VQPQuerierConfig): VQPQuerier {
-  // Create default crypto adapter (software-based)
-  const cryptoConfig: CryptoConfig = {
-    type: 'software',
-    ...config.crypto,
-  };
-
-  // Create default network adapter (WebSocket-based)
-  const networkConfig = {
-    type: 'websocket' as const,
-    timeout: 30000,
-    ...config.network,
-  };
-
-  const cryptoAdapter = createCryptoAdapterHelper(cryptoConfig);
-  const networkAdapter = createNetworkAdapter(networkConfig);
-
-  return new VQPQuerier(networkAdapter, cryptoAdapter, config.identity);
 }
 
 /**
@@ -536,27 +389,5 @@ function createCryptoAdapterHelper(config: CryptoConfig): CryptographicPort {
     }
     default:
       throw new VQPError('CONFIGURATION_ERROR', `Unknown crypto adapter type: ${config.type}`);
-  }
-}
-
-/**
- * Helper function to create network adapter
- */
-function createNetworkAdapter(config: { type: 'websocket'; timeout?: number }): NetworkPort {
-  switch (config.type) {
-    case 'websocket':
-      return new WebSocketTransportAdapter(
-        // Dummy VQP service - this won't be used for client-side operations
-        {
-          processQuery: async () => {
-            throw new Error('Client-side adapter');
-          },
-        },
-        {
-          connectionTimeout: config.timeout || 30000,
-        }
-      );
-    default:
-      throw new Error(`Unsupported network adapter type: ${config.type}`);
   }
 }

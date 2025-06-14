@@ -102,7 +102,6 @@ export class VQPError extends Error {
 // Configuration types
 export interface VQPConfig {
   adapters: {
-    transport: string;
     data: string;
     crypto: string;
     vocabulary: string;

@@ -77,7 +77,6 @@ Complete API documentation is generated with TypeDoc and available at:
 VQP supports modular imports for tree-shaking optimization:
 ```typescript
 import { SoftwareCryptoAdapter } from '@vqp/core/crypto';     // Crypto adapters
-import { HTTPTransportAdapter } from '@vqp/core/transport';  // Transport adapters  
 import { FileSystemDataAdapter } from '@vqp/core/data';      // Data adapters
 ```
 
@@ -86,36 +85,77 @@ import { FileSystemDataAdapter } from '@vqp/core/data';      // Data adapters
 ## ⚡ Quick Start
 
 ```typescript
-import { createVQPSystem, createVQPQuerier, QueryBuilder } from '@vqp/core';
+import { createVQPSystem, QueryBuilder, VQPVerifier } from '@vqp/core';
+import { SoftwareCryptoAdapter } from '@vqp/core/adapters';
 
 // 1. Create a VQP responder (data owner)
 const vqpSystem = createVQPSystem({
   data: { type: 'filesystem', vaultPath: './vault.json' },
   crypto: { type: 'software' },
-  vocabulary: { type: 'http', allowedVocabularies: ['vqp:identity:v1'] },
-  transport: { type: 'http', port: 8080 }
+  vocabulary: { type: 'http', allowedVocabularies: ['vqp:identity:v1'] }
 });
 
 await vqpSystem.start();
 
-// 2. Create a querier and ask questions
-const querier = createVQPQuerier({
-  identity: 'did:web:my-service.com',
-  network: { type: 'websocket' }
-});
+// 2. Build queries directly (no complex querier needed!)
 
-// 3. Build and send a query (without seeing the actual data!)
-const query = new QueryBuilder()
-  .vocabulary('vqp:identity:v1')
-  .expression({ '>=': [{ 'var': 'age' }, 18] })
-  .requester('did:web:my-service.com')
-  .build();
+// Simple comparison query
+const ageQuery = QueryBuilder.compare(
+  'did:web:my-service.com',
+  'vqp:identity:v1', 
+  'age', 
+  '>=', 
+  18
+);
 
-const response = await querier.query('ws://localhost:8080/vqp', query);
+// Complex conditional query
+const loanEligibilityQuery = QueryBuilder.and(
+  'did:web:my-service.com',
+  'vqp:financial:v1',
+  [
+    { '>=': [{ var: 'annual_income' }, 50000] },
+    { '<=': [{ var: 'debt_to_income_ratio' }, 0.4] },
+    { '>=': [{ var: 'credit_score' }, 650] }
+  ]
+);
 
-if (await querier.verify(response)) {
-  console.log('✅ Person is 18+ (verified cryptographically!)');
+// Raw JSONLogic for ultimate flexibility
+const customQuery = QueryBuilder.fromExpression(
+  'did:web:my-service.com',
+  'my-company:custom:v1',
+  {
+    and: [
+      { '==': [{ var: 'clearance_level' }, 'confidential'] },
+      { in: ['AI_RESEARCH', { var: 'projects' }] }
+    ]
+  }
+);
+
+// 3. Process and verify responses directly
+const vqpService = vqpSystem.getService();
+const response = await vqpService.processQuery(ageQuery);
+
+// Verification without stateful session management
+const crypto = new SoftwareCryptoAdapter();
+const verifier = new VQPVerifier(crypto);
+const isValid = await verifier.verifyComplete(response, ageQuery.id);
+
+if (isValid.overall) {
+  console.log('✅ Verification passed (no data was exposed!)');
 }
+
+// 4. Optional: Helper functions for identity-bound queries
+function createMyQueries(identity: string) {
+  return {
+    ageCheck: (minAge: number) => 
+      QueryBuilder.compare(identity, 'vqp:identity:v1', 'age', '>=', minAge),
+    incomeCheck: (minIncome: number) =>
+      QueryBuilder.compare(identity, 'vqp:financial:v1', 'annual_income', '>=', minIncome)
+  };
+}
+
+const myQueries = createMyQueries('did:web:my-app.com');
+const quickAgeQuery = myQueries.ageCheck(21);
 ```
 
 ---
@@ -129,9 +169,6 @@ VQP follows hexagonal architecture and provides modular adapters. You can import
 ```typescript
 // Import specific crypto adapters
 import { SoftwareCryptoAdapter, SnarkjsCryptoAdapter } from '@vqp/core/crypto';
-
-// Import transport adapters  
-import { HTTPTransportAdapter, MemoryTransportAdapter } from '@vqp/core/transport';
 
 // Import data adapters
 import { FileSystemDataAdapter, EncryptedDataAdapter } from '@vqp/core/data';
@@ -147,12 +184,6 @@ const vqpSystem = createVQPSystem({
   crypto: { 
     adapter: new SoftwareCryptoAdapter({
       keyPath: './keys/private.key'
-    })
-  },
-  transport: { 
-    adapter: new HTTPTransportAdapter({
-      port: 8080,
-      cors: { origin: 'https://trusted-app.com' }
     })
   }
 });
@@ -342,13 +373,13 @@ graph TB
 - **Zero-Knowledge Proofs** (zk-SNARKs, Bulletproofs) - Ultimate Privacy
 - **Multi-Signatures** - Distributed Trust & Consensus
 
-### 🌐 **Universal Transport**
-- **HTTP/HTTPS** - Web services & APIs
-- **WebSocket** - Real-time applications  
-- **libp2p/IPFS** - Decentralized networks
-- **Custom P2P** - Blockchain & mesh networks
+### 🧩 **Extensible by Design**
+- **Protocol-First**: Core specification, not opinionated implementation
+- **Any Vocabulary**: Use standards or define your own domain schemas
+- **Any Query Pattern**: Generic QueryBuilder supports all JSONLogic expressions
+- **Future-Proof**: Add new proof systems, vocabularies, and query types
 
-### 📚 **Standardized Vocabularies**
+### 📚 **Standard Vocabularies (Optional)**
 - `vqp:identity:v1` - Age, citizenship, credentials
 - `vqp:financial:v1` - Income, employment, credit
 - `vqp:health:v1` - Vaccinations, conditions, insurance
@@ -357,6 +388,7 @@ graph TB
 - `vqp:academic:v1` - Degrees, enrollment, transcripts
 - `vqp:supply-chain:v1` - Origin, certifications, traceability
 - `vqp:iot:v1` - Sensor data, device status, environmental
+- **+ Your Custom Vocabularies** - Define domain-specific schemas
 
 ### ⚡ **Performance That Scales**
 - **Query Evaluation**: <100ms for complex expressions
@@ -383,15 +415,31 @@ vqp responder --vault ./my-vault.json --port 8080
 
 ```typescript
 // Query someone's age (without knowing their birth date!)
-import { VQPQuerier } from '@vqp/core';
+import { QueryBuilder, VQPVerifier } from '@vqp/core';
+import { SoftwareCryptoAdapter } from '@vqp/core';
 
-const querier = new VQPQuerier();
-const response = await querier.query('https://person.example.com/vqp', {
-  vocab: 'vqp:identity:v1',
-  expr: { '>=': [{ 'var': 'age' }, 18] }
+// Build the query
+const query = new QueryBuilder()
+  .requester('did:web:my-service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ '>=': [{ 'var': 'age' }, 18] })
+  .build();
+
+// Send query (using fetch or your preferred HTTP client)
+const response = await fetch('https://person.example.com/vqp', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(query)
 });
 
-if (await querier.verify(response)) {
+const vqpResponse = await response.json();
+
+// Verify the response
+const crypto = new SoftwareCryptoAdapter();
+const verifier = new VQPVerifier(crypto);
+const isValid = await verifier.verifyComplete(vqpResponse, query.id);
+
+if (isValid.overall) {
   console.log('✅ Person is 18+ (verified cryptographically!)');
 }
 ```
@@ -478,7 +526,6 @@ export const handler = async (event) => {
 - ✅ **Timing Attacks** → Constant-time operations
 - ✅ **Correlation Attacks** → Privacy budgets & noise injection  
 - ✅ **Replay Attacks** → Timestamp validation & nonces
-- ✅ **Man-in-the-Middle** → Transport layer security (TLS)
 
 ### **Cryptographic Foundations**
 - **Post-Quantum Ready**: Algorithm agnostic design

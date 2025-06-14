@@ -3,9 +3,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { VQPSystem, VQPQuerier, VQPVerifier, QueryBuilder, VQPResponse } from '../lib/index.js';
+import { VQPSystem, VQPVerifier, QueryBuilder, VQPResponse } from '../lib/index.js';
 import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
 
 const program = new Command();
 
@@ -34,23 +33,17 @@ program
         crypto: { type: 'software' },
         vocabulary: { type: 'http' },
         audit: { type: 'console', logLevel: options.logLevel },
-        transport: { type: 'http', port: parseInt(options.port) },
         evaluation: {
           type: 'jsonlogic',
         },
       });
 
-      await vqpSystem.start();
-
-      spinner.succeed(chalk.green(`VQP server started on port ${options.port}`));
-      console.log(chalk.blue(`\n📡 Server endpoint: http://localhost:${options.port}/vqp/query`));
       console.log(chalk.gray(`📁 Vault: ${options.vault}`));
       console.log(chalk.gray(`🔧 Press Ctrl+C to stop\n`));
 
       // Handle graceful shutdown
       process.on('SIGINT', async () => {
         console.log(chalk.yellow('\n\n🛑 Shutting down VQP server...'));
-        await vqpSystem.stop();
         console.log(chalk.green('✅ Server stopped successfully'));
         process.exit(0);
       });
@@ -88,13 +81,21 @@ program
       let queryBuilder = new QueryBuilder().requester(options.requester);
 
       if (options.ageCheck) {
-        queryBuilder = queryBuilder.ageCheck(parseInt(options.ageCheck));
+        queryBuilder = queryBuilder
+          .vocabulary('vqp:identity:v1')
+          .expression({ '>=': [{ var: 'age' }, parseInt(options.ageCheck)] });
       } else if (options.citizenshipCheck) {
-        queryBuilder = queryBuilder.citizenshipCheck(options.citizenshipCheck);
+        queryBuilder = queryBuilder
+          .vocabulary('vqp:identity:v1')
+          .expression({ '==': [{ var: 'citizenship' }, options.citizenshipCheck] });
       } else if (options.incomeCheck) {
-        queryBuilder = queryBuilder.incomeCheck(parseInt(options.incomeCheck));
+        queryBuilder = queryBuilder
+          .vocabulary('vqp:financial:v1')
+          .expression({ '>=': [{ var: 'annual_income' }, parseInt(options.incomeCheck)] });
       } else if (options.healthCheck) {
-        queryBuilder = queryBuilder.healthCheck();
+        queryBuilder = queryBuilder
+          .vocabulary('vqp:metrics:v1')
+          .expression({ '==': [{ var: 'health_status' }, 'healthy'] });
       } else if (options.expr) {
         try {
           const expression = JSON.parse(options.expr);
@@ -276,7 +277,8 @@ program
       // Send a simple health check query
       const healthQuery = new QueryBuilder()
         .requester('did:example:cli-health-check')
-        .healthCheck()
+        .vocabulary('vqp:metrics:v1')
+        .expression({ '==': [{ var: 'health_status' }, 'healthy'] })
         .build();
 
       const response = await fetch(options.target, {

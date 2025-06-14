@@ -274,15 +274,6 @@ Vocabularies define the structure and meaning of variables used in queries:
 1. **Query Builder**: Construct valid VQP queries
 2. **Response Validator**: Verify cryptographic proofs
 3. **Vocabulary Resolver**: Understand vocabulary schemas
-4. **Transport Layer**: Send queries and receive responses
-
-### Transport Protocols
-
-VQP is transport-agnostic but commonly used over:
-- HTTP/HTTPS
-- WebSocket
-- IPFS/libp2p
-- Custom P2P protocols
 
 ### Error Handling
 

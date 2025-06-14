@@ -112,14 +112,21 @@ export class QueryBuilder {
   }
 
   /**
-   * Convenience method: Create age verification query
+   * Create a query with a simple field comparison
    */
-  static ageVerification(requester: string, minAge: number, target?: string): VQPQuery {
+  static compare(
+    requester: string,
+    vocabulary: string,
+    field: string,
+    operator: '>=' | '<=' | '==' | '!=' | '>' | '<',
+    value: any,
+    target?: string
+  ): VQPQuery {
     const builder = new QueryBuilder()
       .requester(requester)
-      .vocabulary('vqp:identity:v1')
+      .vocabulary(vocabulary)
       .expression({
-        '>=': [{ var: 'age' }, minAge],
+        [operator]: [{ var: field }, value],
       });
 
     if (target) {
@@ -130,14 +137,60 @@ export class QueryBuilder {
   }
 
   /**
-   * Convenience method: Create citizenship verification query
+   * Create a query with an 'and' condition
    */
-  static citizenshipVerification(requester: string, country: string, target?: string): VQPQuery {
+  static and(
+    requester: string,
+    vocabulary: string,
+    conditions: object[],
+    target?: string
+  ): VQPQuery {
+    const builder = new QueryBuilder().requester(requester).vocabulary(vocabulary).expression({
+      and: conditions,
+    });
+
+    if (target) {
+      builder.target(target);
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Create a query with an 'or' condition
+   */
+  static or(
+    requester: string,
+    vocabulary: string,
+    conditions: object[],
+    target?: string
+  ): VQPQuery {
+    const builder = new QueryBuilder().requester(requester).vocabulary(vocabulary).expression({
+      or: conditions,
+    });
+
+    if (target) {
+      builder.target(target);
+    }
+
+    return builder.build();
+  }
+
+  /**
+   * Create a query with an 'in' condition (array membership)
+   */
+  static in(
+    requester: string,
+    vocabulary: string,
+    value: any,
+    arrayField: string,
+    target?: string
+  ): VQPQuery {
     const builder = new QueryBuilder()
       .requester(requester)
-      .vocabulary('vqp:identity:v1')
+      .vocabulary(vocabulary)
       .expression({
-        '==': [{ var: 'citizenship' }, country],
+        in: [value, { var: arrayField }],
       });
 
     if (target) {
@@ -148,37 +201,18 @@ export class QueryBuilder {
   }
 
   /**
-   * Convenience method: Create income verification query
+   * Create a query from raw JSONLogic expression
    */
-  static incomeVerification(requester: string, minIncome: number, target?: string): VQPQuery {
+  static fromExpression(
+    requester: string,
+    vocabulary: string,
+    expression: object,
+    target?: string
+  ): VQPQuery {
     const builder = new QueryBuilder()
       .requester(requester)
-      .vocabulary('vqp:financial:v1')
-      .expression({
-        '>=': [{ var: 'annual_income' }, minIncome],
-      });
-
-    if (target) {
-      builder.target(target);
-    }
-
-    return builder.build();
-  }
-
-  /**
-   * Convenience method: Create system health query
-   */
-  static systemHealth(requester: string, target?: string): VQPQuery {
-    const builder = new QueryBuilder()
-      .requester(requester)
-      .vocabulary('vqp:metrics:v1')
-      .expression({
-        and: [
-          { '>=': [{ var: 'uptime_percentage_24h' }, 99.0] },
-          { '<=': [{ var: 'response_time_p95_ms' }, 500] },
-          { '==': [{ var: 'health_status' }, 'healthy'] },
-        ],
-      });
+      .vocabulary(vocabulary)
+      .expression(expression);
 
     if (target) {
       builder.target(target);

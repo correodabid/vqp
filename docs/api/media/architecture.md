@@ -18,7 +18,6 @@ The Verifiable Query Protocol (VQP) is designed as a decentralized, privacy-pres
 
 ### 3. Interoperable
 - Standard message formats (JSON)
-- Multiple transport protocols supported
 - Extensible vocabulary system
 
 ### 4. Verifiable
@@ -82,7 +81,6 @@ The Verifiable Query Protocol (VQP) is designed as a decentralized, privacy-pres
 - Entropy generation
 
 #### Network Layer
-- Transport protocol abstraction
 - Message routing
 - Discovery mechanisms
 - Connection management
@@ -149,64 +147,6 @@ vault/
 - **Key Derivation**: PBKDF2 or Argon2 for user-derived keys
 - **Key Storage**: Hardware security modules (HSM) or secure enclaves when available
 - **Forward Secrecy**: Periodic key rotation
-
-## Network Architecture
-
-### 1. Transport Protocols
-
-#### HTTP/HTTPS (Primary)
-```http
-POST /vqp/query HTTP/1.1
-Host: responder.example.com
-Content-Type: application/vqp+json
-Authorization: Bearer <token>
-
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "query": { ... }
-}
-```
-
-#### WebSocket (Real-time)
-```javascript
-const ws = new WebSocket('wss://responder.example.com/vqp');
-ws.send(JSON.stringify({
-  type: 'query',
-  payload: { ... }
-}));
-```
-
-#### libp2p (P2P)
-```javascript
-await node.dial('/ip4/192.168.1.100/tcp/4001/p2p/QmNodeId');
-await node.handle('/vqp/1.0.0', ({ stream }) => {
-  // Handle VQP protocol messages
-});
-```
-
-### 2. Discovery Mechanisms
-
-#### DNS-Based Discovery
-```
-_vqp._tcp.example.com. 3600 IN SRV 10 5 443 vqp.example.com.
-```
-
-#### DHT-Based Discovery (libp2p)
-```javascript
-const providers = await node.contentRouting.findProviders(
-  '/vqp/capability/identity-verification'
-);
-```
-
-#### Registry-Based Discovery
-```json
-{
-  "node_id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
-  "endpoints": ["https://api.example.com/vqp"],
-  "capabilities": ["identity", "financial", "system-metrics"],
-  "public_key": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-}
-```
 
 ## Security Architecture
 
@@ -276,7 +216,6 @@ const providers = await node.contentRouting.findProviders(
 | Query Processing | < 100ms for simple queries |
 | Signature Generation | < 10ms for Ed25519 |
 | ZK Proof Generation | < 5s for standard circuits |
-| Network Latency | Transport-dependent |
 | Storage | Linear with data size |
 
 ### 2. Optimization Strategies
@@ -537,28 +476,6 @@ class VQPService {
 
 ### Adapter Implementations
 
-#### HTTP Transport Adapter
-```typescript
-class HTTPTransportAdapter implements QueryPort {
-  constructor(private vqpService: VQPService) {}
-  
-  async receiveQuery(query: VQPQuery): Promise<VQPResponse> {
-    return await this.vqpService.processQuery(query);
-  }
-  
-  setupExpress(app: Express) {
-    app.post('/vqp/query', async (req, res) => {
-      try {
-        const response = await this.receiveQuery(req.body);
-        res.json(response);
-      } catch (error) {
-        res.status(400).json({ error: error.message });
-      }
-    });
-  }
-}
-```
-
 #### File System Data Adapter
 ```typescript
 class FileSystemDataAdapter implements DataAccessPort {
@@ -594,7 +511,6 @@ class HSMCryptoAdapter implements CryptographicPort {
 ### Benefits for VQP
 
 #### 1. Technology Independence
-- **Transport Agnostic**: Switch between HTTP, WebSocket, P2P without changing core logic
 - **Storage Agnostic**: Support file systems, databases, cloud storage, HSMs
 - **Crypto Agnostic**: Support different signature algorithms, ZK proof systems
 
@@ -621,7 +537,6 @@ describe('VQP Service', () => {
 
 #### 4. Evolution Support
 - **New Proof Systems**: Add ZK-STARK adapters without changing core
-- **New Transports**: Support emerging protocols via new adapters
 - **New Storage**: Adapt to new database technologies
 - **Compliance**: Add compliance-specific adapters (GDPR, HIPAA)
 
@@ -631,7 +546,6 @@ describe('VQP Service', () => {
 ```yaml
 vqp:
   adapters:
-    transport: http
     data: filesystem
     crypto: software
     vocabulary: http-cache
@@ -647,7 +561,6 @@ vqp:
 ```yaml
 vqp:
   adapters:
-    transport: https
     data: encrypted-database
     crypto: hsm
     vocabulary: redis-cache
@@ -664,7 +577,6 @@ vqp:
 ```yaml
 vqp:
   adapters:
-    transport: websocket
     data: embedded-storage
     crypto: embedded-crypto
     vocabulary: local-cache

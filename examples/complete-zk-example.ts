@@ -41,9 +41,6 @@ async function demonstrateZKProofIntegration() {
         type: 'snarkjs',
         config: zkConfig
       },
-      transport: {
-        type: 'memory'
-      },
       vocabulary: {
         type: 'http'
       },
@@ -55,7 +52,6 @@ async function demonstrateZKProofIntegration() {
         }
     });
 
-    await vqpSystem.initialize();
     console.log(chalk.green('✅ VQP system initialized with ZK support\n'));
 
     // 2. Create ZK crypto adapter manually for demonstration
@@ -163,11 +159,8 @@ async function demonstrateZKProofIntegration() {
     console.log(chalk.blue('\n🎉 Demo completed successfully!'));
     console.log(chalk.blue('VQP with ZK proofs enables privacy-preserving verification!'));
 
-    process.exit(0);
-
   } catch (error) {
     console.error(chalk.red('Demo failed:'), error);
-    process.exit(1);
   }
 }
 

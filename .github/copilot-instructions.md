@@ -17,14 +17,12 @@ VQP is an open protocol that enables privacy-preserving, verifiable queries over
 - **Query Language**: JSONLogic-based expressions for safe, deterministic evaluation
 - **Vocabularies**: Standardized schemas defining queryable data fields
 - **Proof Systems**: Digital signatures, ZK-SNARKs, and multi-signature support
-- **Transport Layer**: Protocol-agnostic (HTTP, WebSocket, P2P)
 - **Cryptographic Engine**: Ed25519, secp256k1, RSA for signatures
 
 ### Key Technologies
 - **Languages**: TypeScript/JavaScript (primary), Python, Go, Rust
 - **Cryptography**: Ed25519 signatures, zk-SNARKs, Bulletproofs
 - **Data**: JSON Schema for vocabularies, JSONLogic for queries
-- **Transport**: HTTP/HTTPS, WebSocket, libp2p
 - **Standards**: DID (Decentralized Identifiers), JWT-like response format
 
 ### Hexagonal Architecture
@@ -99,7 +97,6 @@ function createVQPService(config: VQPConfig): VQPService {
 /lib/           # Core library implementations
   /domain/      # Pure business logic (ports and domain services)
   /adapters/    # External system implementations
-    /transport/ # HTTP, WebSocket, P2P adapters
     /data/      # File system, database adapters
     /crypto/    # Software, HSM crypto adapters
     /vocab/     # HTTP, cache vocabulary adapters
@@ -158,28 +155,6 @@ interface VQPResponse {
 ```
 
 ### Hexagonal Architecture Examples
-
-#### Transport Adapter (HTTP)
-```typescript
-class HTTPTransportAdapter implements QueryPort {
-  constructor(private vqpService: VQPService) {}
-  
-  async receiveQuery(query: VQPQuery): Promise<VQPResponse> {
-    return await this.vqpService.processQuery(query);
-  }
-  
-  setupExpress(app: Express) {
-    app.post('/vqp/query', async (req, res) => {
-      try {
-        const response = await this.receiveQuery(req.body);
-        res.json(response);
-      } catch (error) {
-        res.status(400).json({ error: error.message });
-      }
-    });
-  }
-}
-```
 
 #### Crypto Adapter (Software)
 ```typescript
@@ -260,7 +235,6 @@ interface VQPError {
 ## Hexagonal Architecture Benefits for VQP
 
 ### 1. Technology Independence
-- **Transport Agnostic**: HTTP, WebSocket, P2P without changing core logic
 - **Storage Agnostic**: File systems, databases, cloud storage, HSMs
 - **Crypto Agnostic**: Different signature algorithms, ZK proof systems
 
@@ -276,7 +250,6 @@ interface VQPError {
 
 ### 4. Evolution Support
 - Add new proof systems without core changes
-- Support new transport protocols
 - Integrate with new storage technologies
 
 ## Dependencies

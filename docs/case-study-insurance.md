@@ -262,7 +262,8 @@ Modern insurance operations face complex data verification requirements where:
 ```typescript
 class HealthInsuranceUnderwriting {
   constructor(
-    private vqpQuerier: VQPQuerier,
+    private httpClient: HTTPClient,
+    private verifier: VQPVerifier,
     private riskEngine: RiskAssessmentEngine,
     private auditLogger: AuditLogger
   ) {}
@@ -310,17 +311,17 @@ class HealthInsuranceUnderwriting {
       })
       .build();
 
-    // Execute queries concurrently
+    // Execute queries concurrently using HTTP client
     const [eligibilityResult, conditionsResult, lifestyleResult] = await Promise.all([
-      this.vqpQuerier.query(applicantDID + '/vqp/health', eligibilityQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/health', conditionsQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/health', lifestyleQuery)
+      this.httpClient.post(applicantDID + '/vqp/health', eligibilityQuery),
+      this.httpClient.post(applicantDID + '/vqp/health', conditionsQuery),
+      this.httpClient.post(applicantDID + '/vqp/health', lifestyleQuery)
     ]);
 
     // Verify cryptographic proofs
-    const eligibilityValid = await this.vqpQuerier.verify(eligibilityResult);
-    const conditionsValid = await this.vqpQuerier.verify(conditionsResult);
-    const lifestyleValid = await this.vqpQuerier.verify(lifestyleResult);
+    const eligibilityValid = await this.verifier.verifyComplete(eligibilityResult, eligibilityQuery.id);
+    const conditionsValid = await this.verifier.verifyComplete(conditionsResult, conditionsQuery.id);
+    const lifestyleValid = await this.verifier.verifyComplete(lifestyleResult, lifestyleQuery.id);
 
     // Calculate risk score and premium
     const riskFactors = {
@@ -405,17 +406,17 @@ class LifeInsuranceDigitalUnderwriting {
       })
       .build();
 
-    // Execute comprehensive health assessment
+    // Execute comprehensive health assessment using HTTP client
     const [vitalsResult, labResult, familyResult] = await Promise.all([
-      this.vqpQuerier.query(applicantDID + '/vqp/health', vitalsQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/health', labQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/health', familyHistoryQuery)
+      this.httpClient.post(applicantDID + '/vqp/health', vitalsQuery),
+      this.httpClient.post(applicantDID + '/vqp/health', labQuery),
+      this.httpClient.post(applicantDID + '/vqp/health', familyHistoryQuery)
     ]);
 
     const allVerified = await Promise.all([
-      this.vqpQuerier.verify(vitalsResult),
-      this.vqpQuerier.verify(labResult),
-      this.vqpQuerier.verify(familyResult)
+      this.verifier.verifyComplete(vitalsResult, vitalsQuery.id),
+      this.verifier.verifyComplete(labResult, labQuery.id),
+      this.verifier.verifyComplete(familyResult, familyHistoryQuery.id)
     ]);
 
     return {
@@ -480,9 +481,9 @@ class TravelInsuranceAssessment {
       .build();
 
     const [healthResult, fitnessResult, financialResult] = await Promise.all([
-      this.vqpQuerier.query(applicantDID + '/vqp/health', healthQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/health', fitnessQuery),
-      this.vqpQuerier.query(applicantDID + '/vqp/financial', financialQuery)
+      this.httpClient.post(applicantDID + '/vqp/health', healthQuery),
+      this.httpClient.post(applicantDID + '/vqp/health', fitnessQuery),
+      this.httpClient.post(applicantDID + '/vqp/financial', financialQuery)
     ]);
 
     // Combine with destination risk assessment

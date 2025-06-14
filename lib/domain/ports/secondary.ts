@@ -54,15 +54,14 @@ export interface VocabularyPort {
 }
 
 /**
- * Network Port - How VQP communicates with other nodes
+ * Transport Port - Optional interface for transport adapters
+ * This is not part of the core VQP protocol but can be used by applications
+ * that need network abstraction
  */
-export interface NetworkPort {
-  sendQuery(endpoint: string, query: VQPQuery): Promise<VQPResponse>;
-  broadcastQuery(query: VQPQuery): Promise<VQPResponse[]>;
-  discoverPeers(
-    capability: string
-  ): Promise<Array<{ endpoint: string; did: string; capabilities: string[] }>>;
-  isReachable(endpoint: string): Promise<boolean>;
+export interface TransportPort {
+  sendMessage(destination: string, message: any): Promise<any>;
+  receiveMessages(handler: (message: any) => Promise<any>): Promise<void>;
+  isAvailable(): Promise<boolean>;
 }
 
 /**

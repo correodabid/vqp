@@ -6,17 +6,14 @@
 // Core domain exports
 export { VQPService } from './domain/vqp-service.js';
 export { VQPVerifier } from './domain/vqp-verifier.js';
-export { VQPQuerier, QueryBuilder } from './domain/vqp-querier.js';
+export { QueryBuilder } from './domain/query-builder.js';
 export * from './domain/types.js';
 export * from './domain/ports/primary.js';
 export * from './domain/ports/secondary.js';
 
 // System assembly
-export { VQPSystem, createVQPSystem, createVQPQuerier } from './vqp-system.js';
-export type { VQPSystemConfig, VQPQuerierConfig } from './vqp-system.js';
-
-// Adapters - Transport
-export { HTTPTransportAdapter } from './adapters/transport/http-adapter.js';
+export { VQPSystem, createVQPSystem } from './vqp-system.js';
+export type { VQPSystemConfig } from './vqp-system.js';
 
 // Adapters - Data
 export { FileSystemDataAdapter } from './adapters/data/filesystem-adapter.js';

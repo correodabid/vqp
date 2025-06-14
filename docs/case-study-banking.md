@@ -221,11 +221,15 @@ Modern digital banking operates in a complex ecosystem where:
 ```typescript
 // Lending platform integration
 class LoanPreApprovalService {
-  constructor(private vqpQuerier: VQPQuerier) {}
+  constructor(
+    private verifier: VQPVerifier,
+    private httpClient: HTTPClient
+  ) {}
 
   async checkEligibility(customerDID: string): Promise<LoanEligibility> {
     // Query customer's financial status
     const incomeQuery = new QueryBuilder()
+      .requester('did:web:bank.com')
       .target(customerDID)
       .vocabulary('vqp:financial:v1')
       .expression({
@@ -237,13 +241,15 @@ class LoanPreApprovalService {
       })
       .build();
 
-    const incomeResponse = await this.vqpQuerier.query(
+    // Send income query
+    const incomeResponse = await this.httpClient.post(
       customerDID + '/vqp', 
       incomeQuery
     );
 
     // Query credit history
     const creditQuery = new QueryBuilder()
+      .requester('did:web:bank.com')
       .target(customerDID)
       .vocabulary('vqp:banking:v1')
       .expression({
@@ -255,20 +261,21 @@ class LoanPreApprovalService {
       })
       .build();
 
-    const creditResponse = await this.vqpQuerier.query(
+    // Send credit query
+    const creditResponse = await this.httpClient.post(
       customerDID + '/vqp',
       creditQuery
     );
 
     // Verify responses and determine eligibility
-    const incomeVerified = await this.vqpQuerier.verify(incomeResponse);
-    const creditVerified = await this.vqpQuerier.verify(creditResponse);
+    const incomeVerified = await this.verifier.verifyComplete(incomeResponse, incomeQuery.id);
+    const creditVerified = await this.verifier.verifyComplete(creditResponse, creditQuery.id);
 
     return {
-      eligible: incomeVerified && creditVerified && 
+      eligible: incomeVerified.overall && creditVerified.overall && 
                 incomeResponse.result && creditResponse.result,
       preApprovedAmount: this.calculateAmount(incomeResponse, creditResponse),
-      verificationComplete: incomeVerified && creditVerified
+      verificationComplete: incomeVerified.overall && creditVerified.overall
     };
   }
 }
@@ -303,15 +310,15 @@ class KYCComplianceService {
       })
       .build();
 
-    // Execute queries concurrently
+    // Execute queries concurrently using HTTP client
     const [identityResult, amlResult] = await Promise.all([
-      this.vqpQuerier.query(customerDID + '/vqp', identityQuery),
-      this.vqpQuerier.query(customerDID + '/vqp', amlQuery)
+      this.httpClient.post(customerDID + '/vqp', identityQuery),
+      this.httpClient.post(customerDID + '/vqp', amlQuery)
     ]);
 
     // Verify cryptographic proofs
-    const identityValid = await this.vqpQuerier.verify(identityResult);
-    const amlValid = await this.vqpQuerier.verify(amlResult);
+    const identityValid = await this.verifier.verifyComplete(identityResult, identityQuery.id);
+    const amlValid = await this.verifier.verifyComplete(amlResult, amlQuery.id);
 
     return {
       kycStatus: identityValid && amlValid && 

@@ -9,7 +9,6 @@ scripts/
 
 # Entry point source files (compiled versions will be included)
 crypto.ts
-transport.ts
 data.ts
 
 # Build artifacts

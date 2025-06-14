@@ -11,10 +11,6 @@ async function main() {
 
     // Create and start VQP system
     const vqpSystem = createVQPSystem({
-      transport: {
-        type: 'http',
-        port: 8080
-      },
       data: {
         type: 'filesystem',
         vaultPath: './examples/sample-vault.json',
@@ -32,9 +28,6 @@ async function main() {
         logLevel: 'info'
       }
     });
-
-    // Start the system
-    await vqpSystem.start();
 
     // Get the VQP service for direct queries
     const vqpService = vqpSystem.getService();

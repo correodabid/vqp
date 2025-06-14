@@ -1,6 +1,6 @@
 {
   "name": "@vqp/core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Verifiable Query Protocol - Privacy-preserving, verifiable queries over private data with cryptographically verifiable responses",
   "type": "module",
   "main": "dist/lib/index.js",
@@ -15,10 +15,6 @@
       "import": "./dist/crypto.js",
       "types": "./dist/crypto.d.ts"
     },
-    "./transport": {
-      "import": "./dist/transport.js",
-      "types": "./dist/transport.d.ts"
-    },
     "./data": {
       "import": "./dist/data.js",
       "types": "./dist/data.d.ts"
@@ -28,8 +24,6 @@
     "dist/lib",
     "dist/crypto.js",
     "dist/crypto.d.ts",
-    "dist/transport.js",
-    "dist/transport.d.ts",
     "dist/data.js",
     "dist/data.d.ts",
     "README.md",

@@ -54,7 +54,6 @@ async function buildLibrary() {
     entryPoints: [
       'lib/index.ts',
       'crypto.ts',
-      'transport.ts', 
       'data.ts'
     ],
     outdir: 'dist'

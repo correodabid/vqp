@@ -13,7 +13,6 @@
 import { VQPSystem } from '../lib/vqp-system.js';
 import { SnarkjsCryptoAdapter } from '../lib/adapters/crypto/snarkjs-adapter.js';
 import { MemoryAuditAdapter } from '../lib/adapters/audit/memory-adapter.js';
-import { HTTPTransportAdapter } from '../lib/adapters/transport/http-adapter.js';
 import { VQPQuery } from '../lib/domain/types.js';
 
 // Example circuit configuration for production use
@@ -65,10 +64,6 @@ async function runZKProofExample() {
         type: 'memory',
         maxEntries: 1000,
         includeFullQuery: true,
-      },
-      transport: {
-        type: 'http',
-        port: 3001,
       },
     evaluation: {
       type: 'jsonlogic',

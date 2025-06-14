@@ -5,7 +5,8 @@
  * Tests query processing, signature generation, and verification performance
  */
 
-import { createVQPSystem, createVQPQuerier, QueryBuilder } from '../lib/index.js';
+import { createVQPSystem, QueryBuilder, VQPVerifier } from '../lib/index.js';
+import { SoftwareCryptoAdapter } from '../lib/index.js';
 import { performance } from 'perf_hooks';
 
 interface BenchmarkResult {
@@ -25,17 +26,15 @@ class VQPBenchmark {
 
     // Setup test system
     const vqpSystem = createVQPSystem({
-      data: { type: 'memory', config: { vault: { age: 25, citizenship: 'US' } } },
+      data: { type: 'filesystem', vaultPath: './examples/sample-vault.json' },
       crypto: { type: 'software' },
-      vocabulary: { type: 'http', allowedVocabularies: ['vqp:identity:v1'] },
-      transport: { type: 'memory' },
+      vocabulary: { type: 'http' },
       audit: { type: 'memory' },
     });
 
-    const querier = createVQPQuerier({
-      identity: 'did:web:benchmark.test',
-      network: { type: 'websocket' },
-    });
+    // Create verifier for verification benchmarks
+    const crypto = new SoftwareCryptoAdapter();
+    const verifier = new VQPVerifier(crypto);
 
     const query = new QueryBuilder()
       .vocabulary('vqp:identity:v1')
@@ -44,26 +43,27 @@ class VQPBenchmark {
       .build();
 
     // Benchmark query processing
-    await this.benchmarkQueryProcessing(vqpSystem, querier, query);
+    await this.benchmarkQueryProcessing(vqpSystem, query);
 
     // Benchmark signature generation
-    await this.benchmarkSignatureGeneration(vqpSystem, query);
+    await this.benchmarkSignatureGeneration(crypto, query);
 
     // Benchmark verification
-    await this.benchmarkVerification(querier, query);
+    await this.benchmarkVerification(verifier, query);
 
     this.printResults();
   }
 
-  private async benchmarkQueryProcessing(vqpSystem: any, querier: any, query: any): Promise<void> {
+  private async benchmarkQueryProcessing(vqpSystem: any, query: any): Promise<void> {
     console.log('📊 Benchmarking Query Processing...');
 
     const iterations = 1000;
     const times: number[] = [];
+    const service = vqpSystem.getService();
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      await querier.query('memory://test', query);
+      await service.processQuery(query);
       const end = performance.now();
       times.push(end - start);
     }
@@ -71,19 +71,20 @@ class VQPBenchmark {
     this.addResult('Query Processing', times, iterations);
   }
 
-  private async benchmarkSignatureGeneration(vqpSystem: any, query: any): Promise<void> {
+  private async benchmarkSignatureGeneration(crypto: any, query: any): Promise<void> {
     console.log('🔐 Benchmarking Signature Generation...');
 
     const iterations = 5000;
     const times: number[] = [];
 
     // Get the crypto adapter for direct testing
-    const response = { queryId: query.id, result: true, timestamp: new Date().toISOString() };
+    const testData = Buffer.from(
+      JSON.stringify({ queryId: query.id, result: true, timestamp: new Date().toISOString() })
+    );
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      // Simulate signature generation time
-      await new Promise((resolve) => setTimeout(resolve, Math.random() * 2)); // 0-2ms simulation
+      await crypto.sign(testData, 'test-key-id');
       const end = performance.now();
       times.push(end - start);
     }
@@ -91,7 +92,7 @@ class VQPBenchmark {
     this.addResult('Signature Generation', times, iterations);
   }
 
-  private async benchmarkVerification(querier: any, query: any): Promise<void> {
+  private async benchmarkVerification(verifier: any, query: any): Promise<void> {
     console.log('✅ Benchmarking Response Verification...');
 
     const iterations = 2000;
@@ -103,7 +104,7 @@ class VQPBenchmark {
       timestamp: new Date().toISOString(),
       responder: 'did:web:test.example',
       proof: {
-        type: 'signature',
+        type: 'signature' as const,
         algorithm: 'ed25519',
         publicKey: 'test-key',
         signature: 'test-signature',
@@ -112,8 +113,12 @@ class VQPBenchmark {
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      // Simulate verification time
-      await new Promise((resolve) => setTimeout(resolve, Math.random() * 1)); // 0-1ms simulation
+      try {
+        // Use actual verifier (will fail but measures the time)
+        await verifier.verifyComplete(mockResponse, query.id);
+      } catch (error) {
+        // Expected to fail with mock data, we just want timing
+      }
       const end = performance.now();
       times.push(end - start);
     }

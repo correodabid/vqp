@@ -32,7 +32,6 @@
     "lib/**/*",
     "types/**/*",
     "crypto.ts",
-    "transport.ts", 
     "data.ts"
   ],
   "exclude": [

@@ -204,11 +204,7 @@ const vqpSystem = new VQPSystem({
   audit: {
     type: 'memory',
     maxEntries: 1000,
-  },
-  transport: {
-    type: 'http',
-    port: 3000,
-  },
+  }
 });
 
 // Replace crypto adapter with ZK-enabled one

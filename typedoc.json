@@ -23,7 +23,6 @@
   "categoryOrder": [
     "Core",
     "Adapters", 
-    "Transport",
     "Crypto",
     "Data", 
     "Audit",

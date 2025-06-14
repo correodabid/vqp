@@ -56,10 +56,6 @@ describe('VQP End-to-End Flow', () => {
         type: 'console',
         logLevel: 'info',
       },
-      transport: {
-        type: 'http',
-        port: 3000,
-      },
     });
 
     // Note: VQPSystem doesn't have initialize method, it's ready after construction

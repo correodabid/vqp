@@ -31,13 +31,6 @@ async function demonstrateVQPSystemWithMemoryAudit() {
       includeFullResponse: false,
       autoCleanup: true
     },
-    transport: {
-      type: 'http',
-      port: 8080,
-      corsOrigins: ['*'],
-      rateLimitWindowMs: 60000,
-      rateLimitMax: 100
-    },
     evaluation: {
       type: 'jsonlogic',
     }
