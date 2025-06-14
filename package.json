@@ -1,6 +1,6 @@
 {
   "name": "@vqp/core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Verifiable Query Protocol - Privacy-preserving, verifiable queries over private data with cryptographically verifiable responses",
   "type": "module",
   "main": "dist/lib/index.js",
