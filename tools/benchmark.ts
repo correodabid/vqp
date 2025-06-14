@@ -77,6 +77,9 @@ class VQPBenchmark {
     const iterations = 5000;
     const times: number[] = [];
 
+    // Generate a test key for benchmarking
+    await crypto.addKeyPair('test-key-id');
+
     // Get the crypto adapter for direct testing
     const testData = Buffer.from(
       JSON.stringify({ queryId: query.id, result: true, timestamp: new Date().toISOString() })
