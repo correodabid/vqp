@@ -1,0 +1,38 @@
+{
+  "name": "@vqp/vocab-schemaorg",
+  "version": "0.0.1",
+  "description": "Schema.org vocabulary adapter for VQP (Verifiable Query Protocol)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "find src -name '*.test.ts' -exec node --import=tsx --test {} +",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "vqp",
+    "schema.org",
+    "vocabulary",
+    "json-schema",
+    "json-ld",
+    "verifiable-queries"
+  ],
+  "author": "VQP Team",
+  "license": "MIT",
+  "dependencies": {
+    "@vqp/core": "^0.0.6",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0",
+    "@types/node-fetch": "^2.6.11"
+  },
+  "peerDependencies": {
+    "@vqp/core": "^0.0.6"
+  }
+}

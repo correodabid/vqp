@@ -41,6 +41,9 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
       } else if (uri.startsWith('vqp:')) {
         // Built-in VQP vocabulary
         schema = await this.getBuiltinVocabulary(uri);
+      } else if (uri.startsWith('schema.org:') || uri.includes('schema.org')) {
+        // Schema.org vocabulary - basic support
+        schema = await this.getSchemaOrgVocabulary(uri);
       } else {
         throw new Error(`Unsupported vocabulary URI scheme: ${uri}`);
       }
@@ -246,6 +249,83 @@ export class HTTPVocabularyAdapter implements VocabularyPort {
     const schema = vocabularies[uri];
     if (!schema) {
       throw new Error(`Unknown built-in vocabulary: ${uri}`);
+    }
+
+    return schema;
+  }
+
+  /**
+   * Get basic Schema.org vocabulary schemas (simplified support)
+   * For full Schema.org support, use @vqp/vocab-schemaorg package
+   */
+  private async getSchemaOrgVocabulary(uri: string): Promise<any> {
+    // Extract type name from URI
+    let typeName: string;
+    if (uri.startsWith('schema.org:')) {
+      typeName = uri.replace('schema.org:', '');
+    } else if (uri.includes('schema.org/')) {
+      const parts = uri.split('schema.org/');
+      if (parts.length < 2 || !parts[1]) {
+        throw new Error(`Invalid Schema.org URI: ${uri}`);
+      }
+      typeName = parts[1];
+    } else {
+      throw new Error(`Invalid Schema.org URI: ${uri}`);
+    }
+
+    // Basic Schema.org type mappings (limited subset)
+    const schemaOrgTypes: Record<string, any> = {
+      Person: {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        title: 'Schema.org Person (Basic)',
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Full name' },
+          givenName: { type: 'string', description: 'First name' },
+          familyName: { type: 'string', description: 'Last name' },
+          email: { type: 'string', format: 'email', description: 'Email address' },
+          age: { type: 'integer', minimum: 0, description: 'Age in years' },
+          birthDate: { type: 'string', format: 'date', description: 'Birth date' },
+          telephone: { type: 'string', description: 'Phone number' },
+          nationality: { type: 'string', description: 'Nationality' },
+          jobTitle: { type: 'string', description: 'Job title' },
+        },
+      },
+      Organization: {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        title: 'Schema.org Organization (Basic)',
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Organization name' },
+          legalName: { type: 'string', description: 'Legal name' },
+          email: { type: 'string', format: 'email', description: 'Email' },
+          telephone: { type: 'string', description: 'Phone number' },
+          numberOfEmployees: { type: 'integer', minimum: 0, description: 'Employee count' },
+          foundingDate: { type: 'string', format: 'date', description: 'Founding date' },
+          industry: { type: 'string', description: 'Industry' },
+          taxID: { type: 'string', description: 'Tax ID' },
+        },
+      },
+      Product: {
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        title: 'Schema.org Product (Basic)',
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Product name' },
+          description: { type: 'string', description: 'Product description' },
+          sku: { type: 'string', description: 'SKU' },
+          brand: { type: 'string', description: 'Brand name' },
+          model: { type: 'string', description: 'Model' },
+          weight: { type: 'number', minimum: 0, description: 'Weight' },
+        },
+      },
+    };
+
+    const schema = schemaOrgTypes[typeName];
+    if (!schema) {
+      throw new Error(
+        `Schema.org type '${typeName}' not supported in basic mode. Use @vqp/vocab-schemaorg for full support.`
+      );
     }
 
     return schema;

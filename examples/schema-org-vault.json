@@ -1,0 +1,145 @@
+{
+  "@context": "https://schema.org/",
+  "person": {
+    "@type": "Person",
+    "name": "Alice Johnson",
+    "givenName": "Alice",
+    "familyName": "Johnson",
+    "email": "alice.johnson@example.com",
+    "telephone": "+1-555-123-4567",
+    "birthDate": "1990-05-15",
+    "age": 34,
+    "gender": "Female",
+    "nationality": "American",
+    "email_verified": true,
+    "phone_verified": true,
+    "jobTitle": "Senior Software Engineer",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "123 Tech Street",
+      "addressLocality": "San Francisco",
+      "addressRegion": "CA",
+      "postalCode": "94105",
+      "addressCountry": "US"
+    },
+    "worksFor": {
+      "@type": "Organization",
+      "name": "TechCorp Inc.",
+      "legalName": "TechCorp Incorporated",
+      "numberOfEmployees": 250,
+      "foundingDate": "2010-01-01",
+      "industry": "Software Development",
+      "taxID": "12-3456789",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "456 Innovation Ave",
+        "addressLocality": "San Francisco",
+        "addressRegion": "CA",
+        "postalCode": "94107",
+        "addressCountry": "US"
+      }
+    },
+    "alumniOf": {
+      "@type": "EducationalOrganization",
+      "name": "Stanford University",
+      "hasCredential": "Master of Science in Computer Science"
+    }
+  },
+  "organization": {
+    "@type": "Organization",
+    "name": "TechCorp Inc.",
+    "legalName": "TechCorp Incorporated",
+    "email": "contact@techcorp.com",
+    "telephone": "+1-555-987-6543",
+    "url": "https://www.techcorp.com",
+    "foundingDate": "2010-01-01",
+    "numberOfEmployees": 250,
+    "industry": "Software Development",
+    "taxID": "12-3456789",
+    "duns": "12-345-6789",
+    "vatID": "US123456789",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "456 Innovation Ave",
+      "addressLocality": "San Francisco",
+      "addressRegion": "CA",
+      "postalCode": "94107",
+      "addressCountry": "US"
+    }
+  },
+  "product": {
+    "@type": "Product",
+    "name": "Smart Fitness Tracker",
+    "description": "Advanced fitness tracking device with heart rate monitoring",
+    "sku": "SFT-2024-001",
+    "gtin": "1234567890123",
+    "productID": "SFT2024001",
+    "category": "Wearable Technology",
+    "color": "Black",
+    "weight": 45.5,
+    "height": 1.2,
+    "width": 4.5,
+    "depth": 1.0,
+    "model": "FitTracker Pro",
+    "brand": {
+      "@type": "Brand",
+      "name": "TechFit"
+    },
+    "manufacturer": {
+      "@type": "Organization",
+      "name": "TechCorp Inc."
+    }
+  },
+  "event": {
+    "@type": "Event",
+    "name": "Tech Innovation Summit 2024",
+    "description": "Annual technology and innovation conference",
+    "startDate": "2024-09-15T09:00:00-07:00",
+    "endDate": "2024-09-17T17:00:00-07:00",
+    "eventStatus": "EventScheduled",
+    "attendeeCount": 500,
+    "location": {
+      "@type": "Place",
+      "name": "San Francisco Convention Center",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "747 Howard St",
+        "addressLocality": "San Francisco",
+        "addressRegion": "CA",
+        "postalCode": "94103",
+        "addressCountry": "US"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 37.7849,
+        "longitude": -122.4094
+      }
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": "Tech Events Inc.",
+      "email": "events@techevents.com",
+      "telephone": "+1-555-EVENT-01"
+    }
+  },
+  "place": {
+    "@type": "Place",
+    "name": "TechCorp Headquarters",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "456 Innovation Ave",
+      "addressLocality": "San Francisco",
+      "addressRegion": "CA",
+      "postalCode": "94107",
+      "addressCountry": "US"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "elevation": 16.8
+    },
+    "telephone": "+1-555-987-6543",
+    "url": "https://www.techcorp.com/locations/hq"
+  }
+}

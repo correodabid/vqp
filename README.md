@@ -227,6 +227,46 @@ const zkResponse = await querier.query(endpoint, {
 console.log(zkResponse.proof.type); // 'zk-snark'
 ```
 
+### Schema.org Integration
+
+Query data using the widely-adopted Schema.org vocabulary:
+
+```typescript
+import { createSchemaOrgVocabularyAdapter } from '@vqp/vocab-schemaorg';
+
+// Enable Schema.org vocabulary support
+const vqpService = new VQPService(
+  dataAdapter,
+  cryptoAdapter,
+  evaluationAdapter,
+  createSchemaOrgVocabularyAdapter(), // Schema.org support
+  auditAdapter
+);
+
+// Query using Schema.org Person vocabulary
+const personQuery = new QueryBuilder()
+  .vocabulary('schema.org:Person')
+  .expression({
+    "and": [
+      { ">=": [{ "var": "age" }, 18] },
+      { "!=": [{ "var": "jobTitle" }, ""] },
+      { "!=": [{ "var": "worksFor.name" }, ""] }
+    ]
+  })
+  .build();
+
+// Supports nested Schema.org relationships
+const organizationQuery = new QueryBuilder()
+  .vocabulary('schema.org:Organization')
+  .expression({
+    "and": [
+      { ">": [{ "var": "numberOfEmployees" }, 50] },
+      { "!=": [{ "var": "taxID" }, ""] }
+    ]
+  })
+  .build();
+```
+
 ### Custom Vocabularies
 
 ```typescript
@@ -398,6 +438,7 @@ graph TB
 - `vqp:academic:v1` - Degrees, enrollment, transcripts
 - `vqp:supply-chain:v1` - Origin, certifications, traceability
 - `vqp:iot:v1` - Sensor data, device status, environmental
+- **🌐 Schema.org** - Person, Organization, Product, Event, Place (NEW!)
 - **+ Your Custom Vocabularies** - Define domain-specific schemas
 
 ### 🗺️ **Flexible Data Mapping**
@@ -632,6 +673,7 @@ npm run example:age-verification
 | **[⚙️ Integration Guide](./docs/integration-guide.md)** | Implementation instructions | Developers |
 | **[🗺️ Custom Vocabulary Mapping](./docs/custom-vocabulary-mapping.md)** | Custom data structure support | Developers |
 | **[📖 Vocabularies](./docs/vocabularies.md)** | Standard schemas | All Users |
+| **[🌐 Schema.org Integration](./docs/schema-org-integration.md)** | Schema.org vocabulary support | Developers |
 | **[🛣️ Roadmap](./docs/roadmap.md)** | Future development | Stakeholders |
 
 ---

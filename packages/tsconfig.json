@@ -1,22 +1,24 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
     "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "incremental": true
+    "sourceMap": true,
+    "incremental": true,
+    "noEmit": false
   },
-  "references": [
-    { "path": "./core" },
-    { "path": "./data-filesystem" },
-    { "path": "./data-encrypted" },
-    { "path": "./crypto-software" },
-    { "path": "./crypto-snarkjs" },
-    { "path": "./audit-console" },
-    { "path": "./audit-file" },
-    { "path": "./audit-memory" },
-    { "path": "./evaluation-jsonlogic" },
-    { "path": "./vocab-http" }
+  "include": [
+    "src/**/*"
   ],
-  "files": []
+  "references": [
+    { "path": "../core" }
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "**/*.test.ts"
+  ]
 }
