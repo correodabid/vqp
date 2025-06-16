@@ -13,7 +13,7 @@
     "test:integration": "find tests/integration -name '*.test.ts' -exec node --import=tsx --test {} +",
     "clean": "npm run clean --workspaces",
     "example": "npx tsx",
-    "lint": "eslint 'packages/**/*.ts' 'examples/**/*.ts' 'tools/**/*.ts'",
+    "lint": "npm run lint --workspaces",
     "format": "prettier --write 'packages/**/*.ts' 'examples/**/*.ts' 'tools/**/*.ts'",
     "format:check": "prettier --check 'packages/**/*.ts' 'examples/**/*.ts' 'tools/**/*.ts'",
     "docs:build": "typedoc --out docs/api packages/core/src/index.ts"
