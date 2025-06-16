@@ -19,40 +19,62 @@ class EmployeeVocabularyMapping implements VocabularyMapping {
   constructor(private employeeId: string) {}
 
   toVaultPath(field: string, vocabularyUri?: string): string[] {
+    console.log(`🔍 EmployeeMapping.toVaultPath: field="${field}", vocab="${vocabularyUri}"`);
+
     if (vocabularyUri === 'company:employee:v1') {
       // Map employee fields to specific employee record
       if (field.startsWith('profile.')) {
         const profileField = field.substring(8); // Remove 'profile.'
-        return ['employees', this.employeeId, 'profile', profileField];
+        const path = ['employees', this.employeeId, 'profile', profileField];
+        console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+        return path;
       }
 
       if (field.startsWith('permissions.')) {
         const permField = field.substring(12); // Remove 'permissions.'
-        return ['employees', this.employeeId, 'permissions', permField];
+        const path = ['employees', this.employeeId, 'permissions', permField];
+        console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+        return path;
       }
 
       // Direct employee fields
-      return ['employees', this.employeeId, field];
+      const path = ['employees', this.employeeId, field];
+      console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+      return path;
     }
 
     // Default behavior for other vocabularies
-    return field.includes('.') ? field.split('.') : [field];
+    const path = field.includes('.') ? field.split('.') : [field];
+    console.log(`  → Default mapping to vault path: ${JSON.stringify(path)}`);
+    return path;
   }
 
   toVocabularyField(path: string[], vocabularyUri?: string): string {
+    console.log(
+      `🔍 EmployeeMapping.toVocabularyField: path=${JSON.stringify(path)}, vocab="${vocabularyUri}"`
+    );
+
     if (vocabularyUri === 'company:employee:v1' && path.length >= 3) {
       if (path[0] === 'employees' && path[1] === this.employeeId) {
         if (path[2] === 'profile' && path.length >= 4) {
-          return `profile.${path.slice(3).join('.')}`;
+          const result = `profile.${path.slice(3).join('.')}`;
+          console.log(`  → Mapped to vocabulary field: "${result}"`);
+          return result;
         }
         if (path[2] === 'permissions' && path.length >= 4) {
-          return `permissions.${path.slice(3).join('.')}`;
+          const result = `permissions.${path.slice(3).join('.')}`;
+          console.log(`  → Mapped to vocabulary field: "${result}"`);
+          return result;
         }
-        return path.slice(2).join('.');
+        const result = path.slice(2).join('.');
+        console.log(`  → Mapped to vocabulary field: "${result}"`);
+        return result;
       }
     }
 
-    return path.join('.');
+    const result = path.join('.');
+    console.log(`  → Default mapping to vocabulary field: "${result}"`);
+    return result;
   }
 }
 
@@ -64,35 +86,55 @@ class IoTDeviceMapping implements VocabularyMapping {
   constructor(private deviceId: string) {}
 
   toVaultPath(field: string, vocabularyUri?: string): string[] {
+    console.log(`🔍 IoTMapping.toVaultPath: field="${field}", vocab="${vocabularyUri}"`);
+
     if (vocabularyUri === 'iot:device:v1') {
       if (field.startsWith('sensor.')) {
         const sensorField = field.substring(7);
-        return ['devices', this.deviceId, 'sensors', sensorField];
+        const path = ['devices', this.deviceId, 'sensors', sensorField];
+        console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+        return path;
       }
 
       if (field.startsWith('config.')) {
         const configField = field.substring(7);
-        return ['devices', this.deviceId, 'config', configField];
+        const path = ['devices', this.deviceId, 'config', configField];
+        console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+        return path;
       }
 
-      return ['devices', this.deviceId, field];
+      const path = ['devices', this.deviceId, field];
+      console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
+      return path;
     }
 
-    return field.includes('.') ? field.split('.') : [field];
+    const path = field.includes('.') ? field.split('.') : [field];
+    console.log(`  → Default mapping to vault path: ${JSON.stringify(path)}`);
+    return path;
   }
 
   toVocabularyField(path: string[]): string {
+    console.log(`🔍 IoTMapping.toVocabularyField: path=${JSON.stringify(path)}`);
+
     if (path.length >= 3 && path[0] === 'devices' && path[1] === this.deviceId) {
       if (path[2] === 'sensors' && path.length >= 4) {
-        return `sensor.${path.slice(3).join('.')}`;
+        const result = `sensor.${path.slice(3).join('.')}`;
+        console.log(`  → Mapped to vocabulary field: "${result}"`);
+        return result;
       }
       if (path[2] === 'config' && path.length >= 4) {
-        return `config.${path.slice(3).join('.')}`;
+        const result = `config.${path.slice(3).join('.')}`;
+        console.log(`  → Mapped to vocabulary field: "${result}"`);
+        return result;
       }
-      return path.slice(2).join('.');
+      const result = path.slice(2).join('.');
+      console.log(`  → Mapped to vocabulary field: "${result}"`);
+      return result;
     }
 
-    return path.join('.');
+    const result = path.join('.');
+    console.log(`  → Default mapping to vocabulary field: "${result}"`);
+    return result;
   }
 }
 
@@ -149,6 +191,7 @@ async function demonstrateCustomMappings() {
     .build();
 
   try {
+    console.log('📤 Employee Query:', JSON.stringify(employeeQuery.query.expr, null, 2));
     const employeeResponse = await employeeService.processQuery(employeeQuery, {
       'company:employee:v1': employeeVocabulary,
     });
@@ -206,6 +249,7 @@ async function demonstrateCustomMappings() {
     .build();
 
   try {
+    console.log('📤 Device Query:', JSON.stringify(deviceQuery.query.expr, null, 2));
     const deviceResponse = await deviceService.processQuery(deviceQuery, {
       'iot:device:v1': iotVocabulary,
     });

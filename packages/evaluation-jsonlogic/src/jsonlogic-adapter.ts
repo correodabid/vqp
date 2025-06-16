@@ -144,6 +144,15 @@ class OptimizedJSONLogic {
       return data[pathStr];
     }
 
+    // FIRST: Check if the literal property name exists (for keys with dots)
+    // This handles cases like {"profile.level": "senior"} where the key literally contains a dot
+    if (data && Object.prototype.hasOwnProperty.call(data, pathStr)) {
+      return data[pathStr];
+    }
+
+    // SECOND: If literal property doesn't exist, try nested path navigation
+    // This handles cases like {profile: {level: "senior"}} accessed as "profile.level"
+
     // Check variable cache
     const cacheKey = `${pathStr}:${typeof data}`;
     if (this.varCache.has(cacheKey)) {

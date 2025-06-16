@@ -1,6 +1,6 @@
 {
   "name": "@vqp/crypto-snarkjs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "SNARKjs-based cryptographic adapter for VQP with ZK proof support",
   "type": "module",
   "main": "dist/index.js",
@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vqp/core": "^0.0.5",
+    "@vqp/core": "^0.0.6",
     "snarkjs": "^0.7.0",
     "@noble/ed25519": "^2.0.0"
   },
