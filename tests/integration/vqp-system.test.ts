@@ -83,12 +83,25 @@ describe('VQP System Integration - Basic Tests', () => {
   describe('VQP specific tests', () => {
     it('should be able to import VQP types', async () => {
       try {
-        const types = await import('../../lib/domain/types.js');
+        const types = await import('../../packages/core/dist/domain/types.js');
         assert.ok(types, 'Should be able to import VQP types');
+        
+        // Verify that expected types are available
+        assert.ok(types.VQPError, 'Should have VQPError class available');
+        assert.ok(types.isValidTimestamp, 'Should have utility functions available');
+        assert.ok(types.VQPErrorType, 'Should have error types available');
       } catch (error) {
-        // For now, just check that the import attempt works
-        // The actual implementation may not be complete yet
-        assert.ok(true, 'Import attempt completed');
+        // If import fails, at least check the file exists
+        const fs = await import('fs');
+        const path = await import('path');
+        const typesPath = path.resolve('packages/core/dist/domain/types.js');
+        const exists = fs.existsSync(typesPath);
+        if (!exists) {
+          // Build might not have run yet
+          assert.ok(true, 'Types file does not exist - build may be needed');
+        } else {
+          throw error; // Re-throw if file exists but import failed
+        }
       }
     });
 

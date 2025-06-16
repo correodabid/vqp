@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": true
+  },
+  "references": [
+    { "path": "./core" },
+    { "path": "./data-filesystem" },
+    { "path": "./data-encrypted" },
+    { "path": "./crypto-software" },
+    { "path": "./crypto-snarkjs" },
+    { "path": "./audit-console" },
+    { "path": "./audit-file" },
+    { "path": "./audit-memory" },
+    { "path": "./evaluation-jsonlogic" },
+    { "path": "./vocab-http" }
+  ],
+  "files": []
+}

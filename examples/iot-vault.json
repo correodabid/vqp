@@ -1,0 +1,28 @@
+{
+  "devices": {
+    "device-abc123": {
+      "sensors": {
+        "temperature": 22.5,
+        "humidity": 45.2,
+        "battery_level": 85
+      },
+      "config": {
+        "enabled": true,
+        "reporting_interval": 300
+      },
+      "last_seen_minutes": 5
+    },
+    "device-xyz789": {
+      "sensors": {
+        "temperature": 18.0,
+        "humidity": 60.0,
+        "battery_level": 15
+      },
+      "config": {
+        "enabled": false,
+        "reporting_interval": 600
+      },
+      "last_seen_minutes": 120
+    }
+  }
+}

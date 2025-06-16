@@ -13,8 +13,8 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": false,
-    "emitDeclarationOnly": true,
-    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "noEmit": true,
     "removeComments": false,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -25,14 +25,21 @@
     "typeRoots": ["./types", "./node_modules/@types"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["lib/*"]
+      "@vqp/core": ["packages/core/src/index.ts"],
+      "@vqp/data-filesystem": ["packages/data-filesystem/src/index.ts"],
+      "@vqp/data-encrypted": ["packages/data-encrypted/src/index.ts"],
+      "@vqp/crypto-software": ["packages/crypto-software/src/index.ts"],
+      "@vqp/crypto-snarkjs": ["packages/crypto-snarkjs/src/index.ts"],
+      "@vqp/audit-console": ["packages/audit-console/src/index.ts"],
+      "@vqp/audit-file": ["packages/audit-file/src/index.ts"],
+      "@vqp/audit-memory": ["packages/audit-memory/src/index.ts"],
+      "@vqp/evaluation-jsonlogic": ["packages/evaluation-jsonlogic/src/index.ts"],
+      "@vqp/vocab-http": ["packages/vocab-http/src/index.ts"]
     }
   },
   "include": [
-    "lib/**/*",
-    "types/**/*",
-    "crypto.ts",
-    "data.ts"
+    "packages/*/src/**/*",
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",

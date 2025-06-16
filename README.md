@@ -50,15 +50,20 @@ With VQP, verification becomes sovereign:
 
 ## 📦 Installation
 
+**VQP is built with a modular architecture.** Install only the components you need:
+
 ```bash
-# Install the core VQP library
+# Core VQP functionality
 npm install @vqp/core
 
-# Or with yarn
-yarn add @vqp/core
+# Add specific adapters as needed
+npm install @vqp/data-filesystem    # File-based data storage
+npm install @vqp/crypto-software    # Software-based cryptography
+npm install @vqp/audit-console      # Console logging
+npm install @vqp/evaluation-jsonlogic # JSONLogic evaluation
 
-# Or with pnpm  
-pnpm add @vqp/core
+# Or install everything at once
+npm install @vqp/core @vqp/data-filesystem @vqp/crypto-software @vqp/audit-console @vqp/evaluation-jsonlogic
 ```
 
 ### Requirements
@@ -66,38 +71,42 @@ pnpm add @vqp/core
 - **Node.js**: >= 18.0.0
 - **TypeScript**: >= 5.0.0 (optional but recommended)
 
-### API Documentation
+### Modular Architecture Benefits
 
-Complete API documentation is generated with TypeDoc and available at:
-- **Online**: [https://vqp.dev/api](https://vqp.dev/api)
-- **Local**: Generate with `npm run docs:build` and open `docs/api/index.html`
-
-### Subpath Exports
-
-VQP supports modular imports for tree-shaking optimization:
-```typescript
-import { SoftwareCryptoAdapter } from '@vqp/core/crypto';     // Crypto adapters
-import { FileSystemDataAdapter } from '@vqp/core/data';      // Data adapters
-```
+- 🎯 **Minimal Bundle Size**: Only include what you need
+- 🔧 **Technology Independence**: Swap adapters without changing core logic
+- 🧪 **Easy Testing**: Mock adapters for comprehensive testing
+- 📦 **Platform Flexibility**: Deploy to any environment
 
 ---
 
 ## ⚡ Quick Start
 
 ```typescript
-import { createVQPSystem, QueryBuilder, VQPVerifier } from '@vqp/core';
-import { SoftwareCryptoAdapter } from '@vqp/core/adapters';
+import { VQPService, QueryBuilder } from '@vqp/core';
+import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
+import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
+import { createConsoleAuditAdapter } from '@vqp/audit-console';
+import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 
 // 1. Create a VQP responder (data owner)
-const vqpSystem = createVQPSystem({
-  data: { type: 'filesystem', vaultPath: './vault.json' },
-  crypto: { type: 'software' },
-  vocabulary: { type: 'http', allowedVocabularies: ['vqp:identity:v1'] }
+const vqpService = new VQPService(
+  await createFileSystemDataAdapter({ vaultPath: './vault.json' }),
+  await createSoftwareCryptoAdapter({ keyId: 'my-service-key' }),
+  await createConsoleAuditAdapter(),
+  await createJSONLogicAdapter()
+);
+
+// 2. Build and process queries
+const query = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ ">=": [{ "var": "age" }, 18] })
+  .build();
+
+const response = await vqpService.processQuery(query, {
+  'vqp:identity:v1': { /* vocabulary schema */ }
 });
-
-await vqpSystem.start();
-
-// 2. Build queries directly (no complex querier needed!)
 
 // Simple comparison query
 const ageQuery = QueryBuilder.compare(
@@ -376,6 +385,7 @@ graph TB
 ### 🧩 **Extensible by Design**
 - **Protocol-First**: Core specification, not opinionated implementation
 - **Any Vocabulary**: Use standards or define your own domain schemas
+- **Custom Data Mappings**: Map vocabularies to any existing data structure
 - **Any Query Pattern**: Generic QueryBuilder supports all JSONLogic expressions
 - **Future-Proof**: Add new proof systems, vocabularies, and query types
 
@@ -389,6 +399,12 @@ graph TB
 - `vqp:supply-chain:v1` - Origin, certifications, traceability
 - `vqp:iot:v1` - Sensor data, device status, environmental
 - **+ Your Custom Vocabularies** - Define domain-specific schemas
+
+### 🗺️ **Flexible Data Mapping**
+- **Standard Mapping**: Works with predefined VQP vault structures
+- **Flat Mapping**: For simple, flat data organizations
+- **Custom Mapping**: Support any existing data structure without reorganization
+- **Examples**: Employee systems, IoT hierarchies, multi-tenant architectures
 
 ### ⚡ **Performance That Scales**
 - **Query Evaluation**: <100ms for complex expressions
@@ -614,6 +630,7 @@ npm run example:age-verification
 | **[🔒 Security Model](./docs/security.md)** | Threat analysis & mitigations | Security Engineers |
 | **[💡 Use Cases](./docs/use-cases.md)** | Real-world examples | Product Managers |
 | **[⚙️ Integration Guide](./docs/integration-guide.md)** | Implementation instructions | Developers |
+| **[🗺️ Custom Vocabulary Mapping](./docs/custom-vocabulary-mapping.md)** | Custom data structure support | Developers |
 | **[📖 Vocabularies](./docs/vocabularies.md)** | Standard schemas | All Users |
 | **[🛣️ Roadmap](./docs/roadmap.md)** | Future development | Stakeholders |
 

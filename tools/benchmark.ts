@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * VQP Performance Benchmark Tool
- * Tests query processing, signature generation, and verification performance
+ * Simple VQP Performance Benchmark Tool
+ * Tests basic cryptographic operations performance
  */
 
-import { createVQPSystem, QueryBuilder, VQPVerifier } from '../lib/index.js';
-import { SoftwareCryptoAdapter } from '../lib/index.js';
+import { SoftwareCryptoAdapter } from '../packages/crypto-software/src/index.js';
 import { performance } from 'perf_hooks';
 
 interface BenchmarkResult {
@@ -15,7 +14,7 @@ interface BenchmarkResult {
   minTime: number;
   maxTime: number;
   iterations: number;
-  qps?: number;
+  opsPerSecond: number;
 }
 
 class VQPBenchmark {
@@ -24,116 +23,64 @@ class VQPBenchmark {
   async runBenchmarks(): Promise<void> {
     console.log('🚀 Starting VQP Performance Benchmarks...\n');
 
-    // Setup test system
-    const vqpSystem = createVQPSystem({
-      data: { type: 'filesystem', vaultPath: './examples/sample-vault.json' },
-      crypto: { type: 'software' },
-      vocabulary: { type: 'http' },
-      audit: { type: 'memory' },
-    });
-
-    // Create verifier for verification benchmarks
     const crypto = new SoftwareCryptoAdapter();
-    const verifier = new VQPVerifier(crypto);
 
-    const query = new QueryBuilder()
-      .vocabulary('vqp:identity:v1')
-      .expression({ '>=': [{ var: 'age' }, 18] })
-      .requester('did:web:benchmark.test')
-      .build();
+    // Generate a key pair for testing
+    await crypto.addKeyPair('benchmark-key');
 
-    // Benchmark query processing
-    await this.benchmarkQueryProcessing(vqpSystem, query);
-
-    // Benchmark signature generation
-    await this.benchmarkSignatureGeneration(crypto, query);
-
-    // Benchmark verification
-    await this.benchmarkVerification(verifier, query);
+    // Run benchmarks
+    await this.benchmarkSignatureGeneration(crypto);
+    await this.benchmarkSignatureVerification(crypto);
 
     this.printResults();
   }
 
-  private async benchmarkQueryProcessing(vqpSystem: any, query: any): Promise<void> {
-    console.log('📊 Benchmarking Query Processing...');
+  private async benchmarkSignatureGeneration(crypto: SoftwareCryptoAdapter): Promise<void> {
+    console.log('🔐 Benchmarking Ed25519 Signature Generation...');
 
     const iterations = 1000;
     const times: number[] = [];
-    const service = vqpSystem.getService();
+    const testData = Buffer.from('VQP test message for signature benchmarking');
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      await service.processQuery(query);
+      await crypto.sign(testData, 'benchmark-key');
       const end = performance.now();
       times.push(end - start);
     }
 
-    this.addResult('Query Processing', times, iterations);
+    this.addResult('Ed25519 Signature Generation', times, iterations);
   }
 
-  private async benchmarkSignatureGeneration(crypto: any, query: any): Promise<void> {
-    console.log('🔐 Benchmarking Signature Generation...');
+  private async benchmarkSignatureVerification(crypto: SoftwareCryptoAdapter): Promise<void> {
+    console.log('🔍 Benchmarking Ed25519 Signature Verification...');
 
-    const iterations = 5000;
+    const iterations = 1000;
     const times: number[] = [];
+    const testData = Buffer.from('VQP test message for verification benchmarking');
 
-    // Generate a test key for benchmarking
-    await crypto.addKeyPair('test-key-id');
-
-    // Get the crypto adapter for direct testing
-    const testData = Buffer.from(
-      JSON.stringify({ queryId: query.id, result: true, timestamp: new Date().toISOString() })
-    );
+    // Generate a signature to verify
+    const signature = await crypto.sign(testData, 'benchmark-key');
+    const publicKey = crypto.getPublicKey('benchmark-key');
+    if (!publicKey) {
+      throw new Error('Public key not found for benchmark-key');
+    }
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      await crypto.sign(testData, 'test-key-id');
+      await crypto.verify(signature, testData, publicKey);
       const end = performance.now();
       times.push(end - start);
     }
 
-    this.addResult('Signature Generation', times, iterations);
-  }
-
-  private async benchmarkVerification(verifier: any, query: any): Promise<void> {
-    console.log('✅ Benchmarking Response Verification...');
-
-    const iterations = 2000;
-    const times: number[] = [];
-
-    const mockResponse = {
-      queryId: query.id,
-      result: true,
-      timestamp: new Date().toISOString(),
-      responder: 'did:web:test.example',
-      proof: {
-        type: 'signature' as const,
-        algorithm: 'ed25519',
-        publicKey: 'test-key',
-        signature: 'test-signature',
-      },
-    };
-
-    for (let i = 0; i < iterations; i++) {
-      const start = performance.now();
-      try {
-        // Use actual verifier (will fail but measures the time)
-        await verifier.verifyComplete(mockResponse, query.id);
-      } catch (error) {
-        // Expected to fail with mock data, we just want timing
-      }
-      const end = performance.now();
-      times.push(end - start);
-    }
-
-    this.addResult('Response Verification', times, iterations);
+    this.addResult('Ed25519 Signature Verification', times, iterations);
   }
 
   private addResult(operation: string, times: number[], iterations: number): void {
     const averageTime = times.reduce((a, b) => a + b, 0) / times.length;
     const minTime = Math.min(...times);
     const maxTime = Math.max(...times);
-    const qps = 1000 / averageTime; // Queries per second
+    const opsPerSecond = 1000 / averageTime; // Convert ms to ops/sec
 
     const result: BenchmarkResult = {
       operation,
@@ -141,67 +88,48 @@ class VQPBenchmark {
       minTime,
       maxTime,
       iterations,
-      qps,
+      opsPerSecond,
     };
 
     this.results.push(result);
   }
 
   private printResults(): void {
-    console.log('\n📈 Benchmark Results\n');
-    console.log(
-      '┌─────────────────────────┬──────────────┬──────────┬──────────┬─────────────┬──────────────┐'
-    );
-    console.log(
-      '│ Operation               │ Avg Time (ms)│ Min (ms) │ Max (ms) │ Iterations  │ QPS          │'
-    );
-    console.log(
-      '├─────────────────────────┼──────────────┼──────────┼──────────┼─────────────┼──────────────┤'
-    );
+    console.log('\n📊 Benchmark Results:');
+    console.log('='.repeat(80));
 
-    for (const result of this.results) {
-      const { operation, averageTime, minTime, maxTime, iterations, qps } = result;
-      const avgStr = averageTime.toFixed(2).padStart(12);
-      const minStr = minTime.toFixed(2).padStart(8);
-      const maxStr = maxTime.toFixed(2).padStart(8);
-      const iterStr = iterations.toString().padStart(11);
-      const qpsStr = qps?.toFixed(0).padStart(12) || 'N/A'.padStart(12);
+    this.results.forEach((result) => {
+      console.log(`\n${result.operation}:`);
+      console.log(`  Iterations: ${result.iterations.toLocaleString()}`);
+      console.log(`  Average time: ${result.averageTime.toFixed(3)} ms`);
+      console.log(`  Min time: ${result.minTime.toFixed(3)} ms`);
+      console.log(`  Max time: ${result.maxTime.toFixed(3)} ms`);
+      console.log(`  Operations/sec: ${result.opsPerSecond.toFixed(0)}`);
+    });
 
-      console.log(
-        `│ ${operation.padEnd(23)} │${avgStr} │${minStr} │${maxStr} │${iterStr} │${qpsStr} │`
-      );
-    }
-
-    console.log(
-      '└─────────────────────────┴──────────────┴──────────┴──────────┴─────────────┴──────────────┘'
-    );
-
-    // Performance targets
     console.log('\n🎯 Performance Targets:');
-    const queryResult = this.results.find((r) => r.operation === 'Query Processing');
-    const sigResult = this.results.find((r) => r.operation === 'Signature Generation');
+    console.log('  Signature Generation: >1000 ops/sec (target: <1ms avg)');
+    console.log('  Signature Verification: >2000 ops/sec (target: <0.5ms avg)');
 
-    if (queryResult) {
-      const queryTarget = queryResult.averageTime < 100 ? '✅' : '❌';
-      console.log(
-        `${queryTarget} Query Processing: ${queryResult.averageTime.toFixed(2)}ms (target: <100ms)`
-      );
+    // Check if targets are met
+    const sigGenResult = this.results.find((r) => r.operation.includes('Generation'));
+    const sigVerResult = this.results.find((r) => r.operation.includes('Verification'));
+
+    if (sigGenResult && sigGenResult.opsPerSecond >= 1000) {
+      console.log('  ✅ Signature generation target met');
+    } else {
+      console.log('  ❌ Signature generation target not met');
     }
 
-    if (sigResult) {
-      const sigTarget = sigResult.averageTime < 10 ? '✅' : '❌';
-      console.log(
-        `${sigTarget} Signature Generation: ${sigResult.averageTime.toFixed(2)}ms (target: <10ms)`
-      );
+    if (sigVerResult && sigVerResult.opsPerSecond >= 2000) {
+      console.log('  ✅ Signature verification target met');
+    } else {
+      console.log('  ❌ Signature verification target not met');
     }
-
-    console.log('\n🔗 For more detailed performance analysis, use:');
-    console.log('   npm run test:coverage -- --reporter=text');
-    console.log('   node --prof dist/tools/benchmark.js');
   }
 }
 
-// Run benchmarks if called directly
+// Run benchmarks if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const benchmark = new VQPBenchmark();
   benchmark.runBenchmarks().catch(console.error);

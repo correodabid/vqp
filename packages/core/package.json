@@ -1,0 +1,42 @@
+{
+  "name": "@vqp/core",
+  "version": "0.0.5",
+  "description": "Core VQP protocol implementation - adapter-agnostic",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "find src -name '*.test.ts' -exec node --import=tsx --test {} +",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "keywords": [
+    "vqp",
+    "privacy",
+    "query",
+    "verification",
+    "protocol",
+    "core"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vqp-protocol/vqp.git",
+    "directory": "packages/core"
+  }
+}

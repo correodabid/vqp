@@ -1,0 +1,28 @@
+{
+  "employees": {
+    "emp-123": {
+      "profile": {
+        "name": "John Doe",
+        "department": "Engineering",
+        "level": "senior"
+      },
+      "permissions": {
+        "admin": true,
+        "database_access": true
+      },
+      "years_experience": 8
+    },
+    "emp-456": {
+      "profile": {
+        "name": "Jane Smith",
+        "department": "Marketing",
+        "level": "mid"
+      },
+      "permissions": {
+        "admin": false,
+        "database_access": false
+      },
+      "years_experience": 3
+    }
+  }
+}

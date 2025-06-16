@@ -1,0 +1,31 @@
+{
+  "name": "@vqp/audit-memory",
+  "version": "0.0.1",
+  "description": "In-memory audit adapter for VQP",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "find src -name '*.test.ts' -exec node --import=tsx --test {} +",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@vqp/core": "^0.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "keywords": [
+    "vqp",
+    "audit",
+    "memory",
+    "logging"
+  ],
+  "license": "MIT"
+}

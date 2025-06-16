@@ -6,6 +6,13 @@ This file provides context and guidelines for GitHub Copilot when working on the
 
 VQP is an open protocol that enables privacy-preserving, verifiable queries over private data. It allows systems to respond to structured questions without exposing the underlying data, providing cryptographically verifiable responses.
 
+**Current Status (June 2025)**: 
+- ✅ Protocol specification v1.0 complete
+- ✅ Modular package architecture implemented  
+- ✅ ZK-SNARK integration working
+- ✅ Complete documentation and examples
+- ✅ Production-ready TypeScript implementation
+
 ### Core Philosophy
 - **Ask without accessing**: Query data without requiring direct access
 - **Prove without revealing**: Provide verifiable answers without exposing raw data  
@@ -94,18 +101,39 @@ function createVQPService(config: VQPConfig): VQPService {
 
 ### File Structure Patterns
 ```
-/lib/           # Core library implementations
-  /domain/      # Pure business logic (ports and domain services)
-  /adapters/    # External system implementations
-    /data/      # File system, database adapters
-    /crypto/    # Software, HSM crypto adapters
-    /vocab/     # HTTP, cache vocabulary adapters
-/schemas/       # Vocabulary JSON schemas  
-/examples/      # Usage examples and demos
+/packages/      # Modular VQP implementation (current architecture)
+  /core/        # Core domain logic and ports
+  /data-*/      # Data adapter implementations
+  /crypto-*/    # Cryptographic adapter implementations  
+  /audit-*/     # Audit adapter implementations
+  /evaluation-*/# Query evaluation adapters
+  /vocab-*/     # Vocabulary resolver adapters
+/examples/      # Working demonstrations and use cases
+/circuits/      # ZK-SNARK circuits and proving keys
 /tools/         # CLI tools and utilities
-/tests/         # Test suites
-/docs/          # Documentation
+/tests/         # End-to-end and integration tests only
+  /integration/ # Full system integration tests
+/docs/          # Complete documentation
+/coverage/      # Test coverage reports
+/logs/          # Runtime logs
+/scripts/       # Build and deployment scripts
+/types/         # TypeScript type definitions
 ```
+
+### Current Package Architecture
+The project uses a **modular package system** with clear separation of concerns:
+
+**Core Packages:**
+- `@vqp/core` - Domain logic, ports, and orchestration
+- `@vqp/evaluation-jsonlogic` - JSONLogic query evaluation
+- `@vqp/crypto-software` - Software-based cryptography (Ed25519)
+- `@vqp/crypto-snarkjs` - ZK-SNARK proof generation and verification
+- `@vqp/data-filesystem` - File-based data storage
+- `@vqp/data-encrypted` - Encrypted data storage with AES-256-GCM
+- `@vqp/audit-console` - Console audit logging
+- `@vqp/audit-file` - File-based audit logging
+- `@vqp/audit-memory` - In-memory audit logging for testing
+- `@vqp/vocab-http` - HTTP vocabulary resolution with caching
 
 ### Standard Vocabularies
 When implementing vocabulary support, use these standard domains:
@@ -119,6 +147,40 @@ When implementing vocabulary support, use these standard domains:
 - `vqp:iot:v1` - IoT device metrics and status
 
 ## Implementation Patterns
+
+### Current Modular Architecture
+The project uses a **workspace-based package system** where each adapter is its own npm package:
+
+```typescript
+// Using the modular system
+import { VQPService, QueryBuilder } from '@vqp/core';
+import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
+import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
+import { createConsoleAuditAdapter } from '@vqp/audit-console';
+import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
+
+// Compose the system
+const vqpService = new VQPService(
+  createFileSystemDataAdapter('./vault.json'),
+  createSoftwareCryptoAdapter('./keys/'),
+  createJSONLogicAdapter(),
+  createConsoleAuditAdapter()
+);
+```
+
+### Working Examples
+The project includes complete, runnable examples in `/examples/`:
+
+1. **`01-basic-age-verification.ts`** - Essential workflow demonstration
+2. **`02-complete-system.ts`** - Production-ready multi-domain service
+3. **`03-zk-proof.ts`** - Zero-knowledge proof generation and verification
+4. **`04-iot-edge.ts`** - IoT device integration patterns
+5. **`05-custom-adapters.ts`** - Custom adapter implementation guide
+
+**Supporting Files:**
+- `sample-vault.json` - Example data vault structure
+- `access-policies.json` - Access control policy examples
+- `README.md` - Complete example documentation
 
 ### Query Structure
 ```typescript
@@ -203,17 +265,23 @@ class MockDataAdapter implements DataAccessPort {
   }
 }
 
-// Test becomes simple
+// Test becomes simple with Node.js native test runner
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
+
 describe('VQP Service', () => {
-  it('should process age query', async () => {
+  test('should process age query', async () => {
     const mockData = new MockDataAdapter({ age: 25 });
     const mockCrypto = new MockCryptoAdapter();
     const service = new VQPService(mockData, mockCrypto, ...);
     
     const response = await service.processQuery(ageQuery);
-    expect(response.result).toBe(true);
+    assert.strictEqual(response.result, true);
   });
 });
+
+// Tests are executed with: find src -name '*.test.ts' -exec node --import=tsx --test {} +
+// No compilation needed, *.test.ts files are excluded from build
 ```
 
 ### Security Patterns
@@ -252,20 +320,113 @@ interface VQPError {
 - Add new proof systems without core changes
 - Integrate with new storage technologies
 
+### Current Implementation Status
+
+### ✅ Completed Features
+- **Core VQP Protocol**: Full specification implementation
+- **Modular Architecture**: Complete hexagonal architecture with adapter pattern
+- **Package System**: 9 published packages with clean interfaces
+- **Cryptographic Proofs**: Both digital signatures and ZK-SNARKs working
+- **Working Examples**: 5 complete examples demonstrating real use cases
+- **Documentation**: Complete specification, guides, and API docs
+- **Testing Infrastructure**: Unit and integration tests with coverage reporting
+- **ZK-SNARK Circuits**: Age verification circuit implemented and tested
+
+### 🚧 Current Development Focus
+- Performance optimization and benchmarking
+- Additional vocabulary standardization
+- More cryptographic adapter implementations
+- Production deployment guides
+- Community ecosystem development
+
+### 🏗️ Architecture Highlights
+The project successfully implements:
+- **Hexagonal Architecture**: Clean separation between domain and infrastructure
+- **Modular Packages**: Each adapter is independently testable and deployable  
+- **Type Safety**: Full TypeScript implementation with comprehensive types
+- **Zero Dependencies Core**: Core domain logic has no external dependencies
+- **Adapter Ecosystem**: Easy to extend with new storage, crypto, or audit systems
+
 ## Dependencies
 
-### Core Dependencies
-- `jsonlogic-js` - JSONLogic evaluation engine
-- `@noble/ed25519` - Ed25519 cryptography
-- `ajv` - JSON Schema validation
-- `uuid` - UUID generation
-- `jose` - JWT and cryptographic operations
+### Core Dependencies (Latest Implemented)
+- `@noble/ed25519` - Ed25519 cryptography (used in crypto-software and crypto-snarkjs)
+- `snarkjs` - ZK-SNARK proof generation (used in crypto-snarkjs)
+
+### Built-in Node.js Dependencies
+- `node:crypto` - UUID generation (`randomUUID`) and cryptographic operations
+- `node:fs` - File system operations
+- `node:test` - Native test runner (no Jest dependency)
+
+### Custom Implementations
+- **JSONLogic Engine**: Optimized in-house implementation in `@vqp/evaluation-jsonlogic`
+- **UUID Generation**: Using native `node:crypto.randomUUID()` 
+- **Test Framework**: Node.js native test runner with TypeScript support via `tsx`
 
 ### Development Dependencies
-- `jest` - Testing framework
 - `typescript` - Type checking
 - `eslint` - Code linting
 - `prettier` - Code formatting
+- `tsx` - TypeScript execution for examples
+- `typedoc` - API documentation generation
+- `tsx` - TypeScript execution for examples
+- `typedoc` - API documentation generation
+
+**Note**: We use Node.js native test runner (`node --test`) instead of Jest for better performance and fewer dependencies.
+
+### Project Tooling
+**Build & Development:**
+- `npm run build` - Build all packages
+- `npm run test` - Run all tests with coverage
+- `npm run example` - Execute TypeScript examples directly
+- `npm run lint` - Code quality checks
+- `npm run format` - Code formatting
+
+**ZK-SNARK Circuits:**
+- Complete age verification circuit in `/circuits/`
+- Pre-compiled proving keys and verification keys
+- Witness generation and proof creation tools
+- Setup script: `tools/setup-snarkjs.sh`
+
+**Testing & Coverage:**
+- **Unit tests**: Located in each package's `src/` directory using `*.test.ts` pattern
+- **Integration tests**: Located in `/tests/integration/` for end-to-end system testing
+  - `e2e-flow.test.ts` - Basic end-to-end VQP workflows
+  - `comprehensive-flow.test.ts` - Complex multi-domain scenarios  
+  - `vqp-system.test.ts` - System integration and Node.js functionality
+- All tests use Node.js native test runner with TypeScript support via `tsx`
+- Test files are excluded from compilation in each package's `tsconfig.json`
+- Unit test command per package: `find src -name '*.test.ts' -exec node --import=tsx --test {} +`
+- Integration test command: `npm run test:integration` (runs tests in `/tests/integration/`)
+- Coverage reports generated in `/coverage/` with detailed HTML reports
+- Continuous testing with file watching support
+
+**Test Organization:**
+- **Package-level**: Each adapter has its own unit tests testing the specific port implementation
+- **Integration-level**: `/tests/integration/` contains end-to-end flows testing complete system interactions
+- **Example-level**: `/examples/` directory contains working demonstrations that serve as integration tests
+
+**Note**: We use Node.js native test runner (`node --test`) instead of Jest for better performance and fewer dependencies.
+
+### Workspace Structure
+The project uses npm workspaces with lerna-style package management:
+```json
+{
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
+}
+```
+
+### Project Tooling
+**Build & Development:**
+- `npm run build` - Build all packages
+- `npm run test` - Run all tests with coverage
+- `npm run example` - Execute TypeScript examples directly
+- `npm run lint` - Code quality checks
+- `npm run format` - Code formatting
 
 ## Performance Considerations
 

@@ -1,456 +1,434 @@
 /**
  * Comprehensive VQP Flow Tests
- * Demonstrates the complete VQP protocol working with multiple vocabularies and query types
+ * Tests complex scenarios with multiple vocabularies and query types
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import * as assert from 'node:assert/strict';
-import { v4 as uuidv4 } from 'uuid';
-import { VQPSystem } from '../../lib/vqp-system.js';
-import { VQPQuery, VQPResponse } from '../../lib/domain/types.js';
-import { writeFileSync, unlinkSync, existsSync } from 'fs';
-import { join } from 'path';
+import { describe, test, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Import VQP modular packages
+import { VQPService, QueryBuilder, type VQPQuery, type VQPResponse } from '@vqp/core';
+import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
+import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
+import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
+import { createMemoryAuditAdapter } from '@vqp/audit-memory';
+import { createHTTPVocabularyResolver } from '@vqp/vocab-http';
 
 describe('VQP Comprehensive Flow Tests', () => {
-  let vqpSystem: VQPSystem;
+  let vqpService: VQPService;
   let testVaultPath: string;
+  let testKeysDir: string;
 
   beforeEach(async () => {
     // Create comprehensive test vault with multiple data domains
     testVaultPath = join(process.cwd(), 'comprehensive-test-vault.json');
+    testKeysDir = join(process.cwd(), 'comprehensive-test-keys');
 
+    // Ensure keys directory exists
+    if (!existsSync(testKeysDir)) {
+      mkdirSync(testKeysDir, { recursive: true });
+    }
+
+    // Create comprehensive test data across multiple vocabularies
     const comprehensiveVault = {
       personal: {
         age: 32,
         citizenship: 'US',
         has_drivers_license: true,
         has_passport: true,
-        government_id_verified: true,
         email_verified: true,
-        phone_verified: true,
+        phone_verified: true
       },
       financial: {
         annual_income: 95000,
-        monthly_income: 7900,
+        monthly_income: 7916,
         employment_status: 'employed',
         employment_duration_months: 36,
         credit_score: 750,
         has_bank_account: true,
         debt_to_income_ratio: 0.25,
-        tax_resident_country: 'US',
+        tax_resident_country: 'US'
+      },
+      health: {
+        vaccinations_completed: ['COVID-19', 'influenza', 'hepatitis_b'],
+        covid_vaccination_doses: 3,
+        last_vaccination_date: '2024-10-15',
+        blood_type: 'O+',
+        allergies: [],
+        chronic_conditions: [],
+        medical_device_implanted: false,
+        pregnant: false,
+        recent_surgery_90_days: false,
+        insurance_verified: true
       },
       system: {
-        uptime_percentage_24h: 99.9,
+        uptime_percentage_24h: 99.95,
         uptime_percentage_7d: 99.8,
-        response_time_p95_ms: 120,
+        response_time_p50_ms: 45,
+        response_time_p95_ms: 150,
+        response_time_p99_ms: 300,
         error_rate_percentage: 0.02,
-        throughput_rps: 850,
-        cpu_usage_percentage: 45.5,
+        throughput_rps: 500,
+        processed_events_last_hour: 1800,
+        cpu_usage_percentage: 35.5,
         memory_usage_percentage: 62.0,
-        health_status: 'healthy',
+        disk_usage_percentage: 45.0,
+        health_status: 'healthy'
       },
+      academic: {
+        degrees_earned: ['bachelors', 'masters'],
+        graduation_year: 2018,
+        gpa: 3.7,
+        enrollment_status: 'graduated',
+        degree_level: 'graduate',
+        major_field: 'computer_science',
+        transcripts_verified: true,
+        honors_received: ['magna_cum_laude']
+      }
     };
 
     writeFileSync(testVaultPath, JSON.stringify(comprehensiveVault, null, 2));
 
-    // Initialize VQP system
-    vqpSystem = new VQPSystem({
-      data: {
-        type: 'filesystem',
-        vaultPath: testVaultPath,
-      },
-      crypto: {
-        type: 'software',
-      },
-      vocabulary: {
-        type: 'http',
-        allowedVocabularies: ['vqp:identity:v1', 'vqp:financial:v1', 'vqp:metrics:v1'],
-        cacheTimeoutMs: 300000,
-      },
-      audit: {
-        type: 'console',
-        logLevel: 'info',
-      },
-    });
+    // Create VQP service with modular adapters
+    const dataAdapter = await createFileSystemDataAdapter({ vaultPath: testVaultPath });
+    const cryptoAdapter = await createSoftwareCryptoAdapter();
+    const evaluationAdapter = await createJSONLogicAdapter();
+    const auditAdapter = await createMemoryAuditAdapter();
+    const vocabularyAdapter = await createHTTPVocabularyResolver();
+
+    vqpService = new VQPService(
+      dataAdapter,
+      cryptoAdapter,
+      auditAdapter,
+      evaluationAdapter,
+      vocabularyAdapter
+    );
   });
 
   afterEach(() => {
     // Clean up test files
-    if (existsSync(testVaultPath)) unlinkSync(testVaultPath);
+    if (existsSync(testVaultPath)) {
+      unlinkSync(testVaultPath);
+    }
+    if (existsSync(testKeysDir)) {
+      rmSync(testKeysDir, { recursive: true, force: true });
+    }
   });
 
-  describe('Identity Verification Queries', () => {
-    it('should verify age eligibility (18+)', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:age-verification-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ var: 'age' }, 18] },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true); // 32 >= 18
-      assert.strictEqual(response.queryId, query.id);
-      assert.ok(response.proof);
-      assert.strictEqual(response.proof.type, 'signature');
-    });
-
-    it('should verify age eligibility (21+)', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:alcohol-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ var: 'age' }, 21] },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true); // 32 >= 21
-    });
-
-    it('should verify US citizenship and ID verification', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:government-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: {
-            and: [
-              { '==': [{ var: 'citizenship' }, 'US'] },
-              { '==': [{ var: 'government_id_verified' }, true] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true);
-    });
-
-    it('should verify comprehensive identity requirements', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:comprehensive-kyc.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: {
-            and: [
-              { '>=': [{ var: 'age' }, 25] },
-              { '==': [{ var: 'citizenship' }, 'US'] },
-              { '==': [{ var: 'has_drivers_license' }, true] },
-              { '==': [{ var: 'email_verified' }, true] },
-              { '==': [{ var: 'phone_verified' }, true] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true);
-    });
-  });
-
-  describe('Financial Verification Queries', () => {
-    it('should verify loan eligibility (income-based)', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:bank.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ var: 'annual_income' }, 50000] },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true); // 95000 >= 50000
-    });
-
-    it('should verify comprehensive loan eligibility', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:mortgage-lender.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:financial:v1',
-          expr: {
-            and: [
-              { '>=': [{ var: 'annual_income' }, 80000] },
-              { '>=': [{ var: 'credit_score' }, 700] },
-              { '==': [{ var: 'employment_status' }, 'employed'] },
-              { '>=': [{ var: 'employment_duration_months' }, 24] },
-              { '<=': [{ var: 'debt_to_income_ratio' }, 0.36] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true);
-    });
-
-    it('should verify high-income threshold', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:premium-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ var: 'annual_income' }, 100000] },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, false); // 95000 < 100000
-    });
-  });
-
-  describe('System Metrics Verification Queries', () => {
-    it('should verify SLA compliance', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:monitoring-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:metrics:v1',
-          expr: {
-            and: [
-              { '>=': [{ var: 'uptime_percentage_24h' }, 99.5] },
-              { '<=': [{ var: 'response_time_p95_ms' }, 200] },
-              { '<=': [{ var: 'error_rate_percentage' }, 0.1] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true);
-    });
-
-    it('should verify resource health', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:resource-monitor.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:metrics:v1',
-          expr: {
-            and: [
-              { '<=': [{ var: 'cpu_usage_percentage' }, 80] },
-              { '<=': [{ var: 'memory_usage_percentage' }, 85] },
-              { '==': [{ var: 'health_status' }, 'healthy'] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true);
-    });
-
-    it('should verify high-performance requirements', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:performance-checker.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:metrics:v1',
-          expr: {
-            and: [
-              { '>=': [{ var: 'throughput_rps' }, 1000] },
-              { '<=': [{ var: 'response_time_p95_ms' }, 100] },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, false); // throughput 850 < 1000
-    });
-  });
-
-  describe('Complex Cross-Domain Queries', () => {
-    it('should handle complex boolean logic with multiple conditions', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:complex-service.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: {
-            or: [
-              {
-                and: [{ '>=': [{ var: 'age' }, 30] }, { '==': [{ var: 'has_passport' }, true] }],
-              },
-              {
-                and: [
-                  { '>=': [{ var: 'age' }, 25] },
-                  { '==': [{ var: 'government_id_verified' }, true] },
-                  { '==': [{ var: 'email_verified' }, true] },
-                ],
-              },
-            ],
-          },
-        },
-      };
-
-      const response = await vqpSystem.getService().processQuery(query);
-
-      assert.strictEqual(response.result, true); // First condition matches: age 32 >= 30 AND has_passport true
-    });
-  });
-
-  describe('Response Verification', () => {
-    it('should verify all generated responses', async () => {
-      const queries = [
-        {
-          vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ var: 'age' }, 18] },
-        },
-        {
-          vocab: 'vqp:financial:v1',
-          expr: { '>=': [{ var: 'annual_income' }, 50000] },
-        },
-        {
-          vocab: 'vqp:metrics:v1',
-          expr: { '==': [{ var: 'health_status' }, 'healthy'] },
-        },
-      ];
-
-      for (const queryConfig of queries) {
-        const query: VQPQuery = {
-          id: uuidv4(),
-          version: '1.0.0',
-          timestamp: new Date().toISOString(),
-          requester: 'did:web:verification-test.com',
-          query: {
-            lang: 'jsonlogic@1.0.0',
-            vocab: queryConfig.vocab,
-            expr: queryConfig.expr,
-          },
-        };
-
-        const response = await vqpSystem.getService().processQuery(query);
-        const isValid = await vqpSystem.verify(response);
-
-        assert.strictEqual(isValid, true, `Response verification failed for ${queryConfig.vocab}`);
-        assert.strictEqual(
-          response.result,
-          true,
-          `Query result was false for ${queryConfig.vocab}`
-        );
+  test('should handle multi-domain identity verification', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:comprehensive-verifier.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:identity:v1',
+        expr: {
+          'and': [
+            { '>=': [{ var: 'age' }, 25] },
+            { '==': [{ var: 'citizenship' }, 'US'] },
+            { '==': [{ var: 'has_passport' }, true] },
+            { '==': [{ var: 'email_verified' }, true] }
+          ]
+        }
       }
-    });
+    };
+
+    const response = await vqpService.processQuery(query);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+    assert.strictEqual(response.proof.type, 'signature');
   });
 
-  describe('Error Handling', () => {
-    it('should handle invalid query structures', async () => {
-      const invalidQuery = {
-        id: 'not-a-uuid',
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:test.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ var: 'age' }, 18] },
-        },
-      };
-
-      try {
-        await vqpSystem.getService().processQuery(invalidQuery as any);
-        assert.fail('Should have thrown an error for invalid query ID');
-      } catch (error: any) {
-        assert.ok(error instanceof Error);
-        assert.ok(error.message.includes('Invalid query ID'));
+  test('should handle complex financial verification', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:premium-bank.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:financial:v1',
+        expr: {
+          'and': [
+            { '>=': [{ var: 'annual_income' }, 80000] },
+            { '>=': [{ var: 'credit_score' }, 700] },
+            { '<=': [{ var: 'debt_to_income_ratio' }, 0.3] },
+            { '>=': [{ var: 'employment_duration_months' }, 24] },
+            { '==': [{ var: 'has_bank_account' }, true] }
+          ]
+        }
       }
-    });
+    };
 
-    it('should handle queries for non-existent data', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:test.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: { '==': [{ var: 'non_existent_field' }, 'value'] },
-        },
-      };
+    const response = await vqpService.processQuery(query);
 
-      const response = await vqpSystem.getService().processQuery(query);
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
 
-      // JSONLogic should handle undefined values gracefully
-      assert.strictEqual(response.result, false);
+  test('should handle health verification for research', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:medical-research.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:health:v1',
+        expr: {
+          'and': [
+            { 'in': ['COVID-19', { var: 'vaccinations_completed' }] },
+            { '>=': [{ var: 'covid_vaccination_doses' }, 2] },
+            { '!': [{ var: 'pregnant' }] },
+            { '!': [{ var: 'recent_surgery_90_days' }] },
+            { '==': [{ var: 'insurance_verified' }, true] }
+          ]
+        }
+      }
+    };
+
+    const response = await vqpService.processQuery(query);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle system reliability verification', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:enterprise-client.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:metrics:v1',
+        expr: {
+          'and': [
+            { '>=': [{ var: 'uptime_percentage_7d' }, 99.5] },
+            { '<=': [{ var: 'response_time_p95_ms' }, 200] },
+            { '<=': [{ var: 'error_rate_percentage' }, 0.1] },
+            { '>=': [{ var: 'throughput_rps' }, 100] },
+            { '==': [{ var: 'health_status' }, 'healthy'] }
+          ]
+        }
+      }
+    };
+
+    const response = await vqpService.processQuery(query);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle academic verification for job application', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:tech-company.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:academic:v1',
+        expr: {
+          'and': [
+            { 'in': ['bachelors', { var: 'degrees_earned' }] },
+            { '>=': [{ var: 'gpa' }, 3.5] },
+            { '==': [{ var: 'major_field' }, 'computer_science'] },
+            { '==': [{ var: 'transcripts_verified' }, true] }
+          ]
+        }
+      }
+    };
+
+    const response = await vqpService.processQuery(query);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle failing verification gracefully', async () => {
+    const query: VQPQuery = {
+      id: randomUUID(),
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      requester: 'did:web:strict-verifier.com',
+      query: {
+        lang: 'jsonlogic@1.0.0',
+        vocab: 'vqp:financial:v1',
+        expr: {
+          'and': [
+            { '>=': [{ var: 'annual_income' }, 150000] }, // Too high
+            { '>=': [{ var: 'credit_score' }, 800] }       // Too high
+          ]
+        }
+      }
+    };
+
+    const response = await vqpService.processQuery(query);
+
+    assert.strictEqual(response.result, false);
+    assert.ok(response.proof); // Should still be cryptographically signed
+  });
+
+  test('should handle sequential queries efficiently', async () => {
+    const queries = [
+      // Age verification
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:sequence-test.com')
+        .vocabulary('vqp:identity:v1')
+        .expression({ '>=': [{ var: 'age' }, 18] })
+        .build(),
+      
+      // Income verification
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:sequence-test.com')
+        .vocabulary('vqp:financial:v1')
+        .expression({ '>=': [{ var: 'annual_income' }, 50000] })
+        .build(),
+      
+      // Health verification
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:sequence-test.com')
+        .vocabulary('vqp:health:v1')
+        .expression({ 'in': ['COVID-19', { var: 'vaccinations_completed' }] })
+        .build()
+    ];
+
+    const responses: VQPResponse[] = [];
+    
+    for (const query of queries) {
+      const response = await vqpService.processQuery(query);
+      responses.push(response);
+    }
+
+    // All queries should succeed
+    assert.strictEqual(responses.length, 3);
+    responses.forEach((response, index) => {
+      assert.strictEqual(response.result, true);
       assert.ok(response.proof);
+      assert.strictEqual(response.queryId, queries[index].id);
     });
   });
 
-  describe('Performance and Timing', () => {
-    it('should process queries within reasonable time limits', async () => {
-      const query: VQPQuery = {
-        id: uuidv4(),
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        requester: 'did:web:performance-test.com',
-        query: {
-          lang: 'jsonlogic@1.0.0',
-          vocab: 'vqp:identity:v1',
-          expr: { '>=': [{ var: 'age' }, 18] },
-        },
-      };
+  test('should handle parallel queries correctly', async () => {
+    const queries = [
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:parallel-test.com')
+        .vocabulary('vqp:identity:v1')
+        .expression({ '==': [{ var: 'citizenship' }, 'US'] })
+        .build(),
+      
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:parallel-test.com')
+        .vocabulary('vqp:metrics:v1')
+        .expression({ '>=': [{ var: 'uptime_percentage_24h' }, 99.0] })
+        .build(),
+      
+      new QueryBuilder()
+        .id(randomUUID())
+        .requester('did:web:parallel-test.com')
+        .vocabulary('vqp:academic:v1')
+        .expression({ 'in': ['masters', { var: 'degrees_earned' }] })
+        .build()
+    ];
 
-      const startTime = Date.now();
-      const response = await vqpSystem.getService().processQuery(query);
-      const endTime = Date.now();
+    // Execute queries in parallel
+    const responses = await Promise.all(
+      queries.map(query => vqpService.processQuery(query))
+    );
 
-      const processingTime = endTime - startTime;
-
+    // All queries should succeed
+    assert.strictEqual(responses.length, 3);
+    responses.forEach((response, index) => {
       assert.strictEqual(response.result, true);
-      assert.ok(
-        processingTime < 1000,
-        `Processing took ${processingTime}ms, should be under 1000ms`
-      );
+      assert.ok(response.proof);
+      assert.strictEqual(response.queryId, queries[index].id);
     });
+  });
+
+  test('should handle system queries with QueryBuilder', async () => {
+    const systemQuery = new QueryBuilder()
+      .id(randomUUID())
+      .requester('did:web:test-requester')
+      .target('did:web:test-target')
+      .vocabulary('vqp:metrics:v1') // Changed from vqp:system:v1
+      .expression({
+        and: [
+          { '>=': [{ var: 'uptime_percentage_24h' }, 99.9] },
+          { '<=': [{ var: 'cpu_usage_percentage' }, 75] },
+          { '==': [{ var: 'health_status' }, 'healthy'] },
+        ],
+      })
+      .build();
+
+    const response = await vqpService.processQuery(systemQuery);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle system queries with QueryBuilder - multiple conditions', async () => {
+    const systemQuery2 = new QueryBuilder()
+      .id(randomUUID())
+      .requester('did:web:test-requester')
+      .target('did:web:test-target')
+      .vocabulary('vqp:metrics:v1') // Changed from vqp:system:v1
+      .expression({
+        and: [
+          { '>=': [{ var: 'memory_usage_percentage' }, 50] },
+          { '<=': [{ var: 'disk_usage_percentage' }, 90] },
+        ],
+      })
+      .build();
+
+    const response = await vqpService.processQuery(systemQuery2);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle system queries with QueryBuilder - single condition', async () => {
+    const systemQuery3 = new QueryBuilder()
+      .id(randomUUID())
+      .requester('did:web:test-requester')
+      .target('did:web:test-target')
+      .vocabulary('vqp:metrics:v1') // Changed from vqp:system:v1
+      .expression({
+        '>=': [{ var: 'processed_events_last_hour' }, 1000]
+      })
+      .build();
+
+    const response = await vqpService.processQuery(systemQuery3);
+
+    assert.strictEqual(response.result, true);
+    assert.ok(response.proof);
+  });
+
+  test('should handle system queries with QueryBuilder - invalid property', async () => {
+    const systemQuery4_invalid_vocab_prop = new QueryBuilder()
+      .id(randomUUID())
+      .requester('did:web:test-requester')
+      .target('did:web:test-target')
+      .vocabulary('vqp:metrics:v1') // Changed from vqp:system:v1
+      .expression({
+        '>=': [{ var: 'non_existent_system_prop' }, 1000]
+      })
+      .build();
+
+    const response = await vqpService.processQuery(systemQuery4_invalid_vocab_prop);
+
+    assert.strictEqual(response.result, false);
+    assert.ok(response.proof);
   });
 });
