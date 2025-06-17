@@ -8,7 +8,7 @@
  * - Real-time response capabilities
  */
 
-import { VQPService, QueryBuilder } from '@vqp/core';
+import { VQPService, QueryBuilder, createResponseModeAdapter, VocabularyPort } from '@vqp/core';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createMemoryAuditAdapter } from '@vqp/audit-memory';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
@@ -48,6 +48,11 @@ class IoTSensorDataAdapter implements DataAccessPort {
     return trustedSystems.includes(requester);
   }
 
+  async hasData(path: string[]): Promise<boolean> {
+    const key = path.join('.');
+    return key in this.sensorData || this.getNestedValue(this.sensorData, path) !== undefined;
+  }
+
   private getNestedValue(obj: any, path: string[]): any {
     return path.reduce((current, key) => current?.[key], obj);
   }
@@ -74,6 +79,28 @@ const IOT_VOCAB = {
   },
 };
 
+// Simple vocabulary adapter for IoT
+class IoTVocabularyAdapter implements VocabularyPort {
+  async resolveVocabulary(uri: string): Promise<any> {
+    if (uri === 'vqp:iot:v1') {
+      return IOT_VOCAB;
+    }
+    throw new Error(`Unknown vocabulary: ${uri}`);
+  }
+
+  async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+    return true; // Simplified validation
+  }
+
+  async cacheVocabulary(uri: string, schema: any): Promise<void> {
+    // No-op for this example
+  }
+
+  async isVocabularyAllowed(uri: string): Promise<boolean> {
+    return uri === 'vqp:iot:v1';
+  }
+}
+
 async function main() {
   console.log('🏠 VQP Example: IoT/Edge Device');
 
@@ -83,11 +110,14 @@ async function main() {
 
   const vqpService = new VQPService(
     iotDataAdapter,
-    await createSoftwareCryptoAdapter({
-      keyId: 'iot-device-key',
-    }),
+    await createSoftwareCryptoAdapter(),
     memoryAuditAdapter,
-    await createJSONLogicAdapter()
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
+    new IoTVocabularyAdapter()
   );
 
   // Simulate IoT queries from home automation system
@@ -151,7 +181,9 @@ async function main() {
       console.log(`\n📊 ${name}:`);
       console.log(`   Result: ${response.result}`);
       console.log(`   Response time: ${duration}ms`);
-      console.log(`   Verified: ${!!response.proof.signature}`);
+      console.log(
+        `   Verified: ${response.proof.type === 'signature' ? !!(response.proof as any).signature : 'N/A'}`
+      );
     } catch (error) {
       console.error(`❌ ${name} failed:`, error.message);
     }

@@ -1,6 +1,6 @@
 {
   "name": "@vqp/vocab-schemaorg",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Schema.org vocabulary adapter for VQP (Verifiable Query Protocol)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,7 @@
   "author": "VQP Team",
   "license": "MIT",
   "dependencies": {
-    "@vqp/core": "^0.0.6",
+    "@vqp/core": "^0.0.7",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
@@ -33,6 +33,6 @@
     "@types/node-fetch": "^2.6.11"
   },
   "peerDependencies": {
-    "@vqp/core": "^0.0.6"
+    "@vqp/core": "^0.0.7"
   }
 }

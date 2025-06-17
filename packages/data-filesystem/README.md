@@ -19,7 +19,7 @@ import { VQPService } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 
 // Create the adapter
-const dataAdapter = await createFileSystemDataAdapter({
+const dataAdapter = createFileSystemDataAdapter({
   vaultPath: './vault.json',
   policiesPath: './policies.json'  // Optional
 });

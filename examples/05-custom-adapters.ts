@@ -9,7 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { VQPService, QueryBuilder } from '@vqp/core';
+import { VQPService, QueryBuilder, createResponseModeAdapter, VocabularyPort } from '@vqp/core';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 import type { DataAccessPort, AuditPort, AuditEntry, AuditFilters } from '@vqp/core';
@@ -70,6 +70,20 @@ class APIDataAdapter implements DataAccessPort {
       return false;
     }
   }
+
+  async hasData(path: string[]): Promise<boolean> {
+    // Check if data exists at the given path
+    const key = path.join('/');
+    const mockApiData = {
+      'user/profile/age': 28,
+      'user/profile/verified': true,
+      'user/financial/income': 75000,
+      'user/financial/credit_score': 720,
+      'company/metrics/uptime': 99.9,
+      'company/metrics/response_time': 120,
+    };
+    return key in mockApiData;
+  }
 }
 
 // Custom webhook audit adapter
@@ -83,15 +97,13 @@ class WebhookAuditAdapter implements AuditPort {
 
   async logQuery(query: any, response: any): Promise<void> {
     const auditEntry: AuditEntry = {
-      id: randomUUID(),
       timestamp: new Date().toISOString(),
-      type: 'query',
+      event: 'query_processed',
       queryId: query.id,
-      requester: query.requester,
-      action: 'query_processed',
-      details: {
+      querier: query.requester,
+      result: response.result,
+      metadata: {
         vocabulary: query.query.vocab,
-        result: response.result,
         proofType: response.proof.type,
       },
     };
@@ -101,7 +113,7 @@ class WebhookAuditAdapter implements AuditPort {
     try {
       // Simulate webhook call
       console.log(`📡 Sending audit to webhook: ${this.webhookUrl}`);
-      console.log(`   Entry: ${auditEntry.type} - ${auditEntry.action}`);
+      console.log(`   Entry: ${auditEntry.event} - ${auditEntry.result}`);
 
       // In real implementation:
       // await fetch(this.webhookUrl, {
@@ -117,12 +129,14 @@ class WebhookAuditAdapter implements AuditPort {
 
   async logError(error: Error, context: any): Promise<void> {
     const auditEntry: AuditEntry = {
-      id: randomUUID(),
       timestamp: new Date().toISOString(),
-      type: 'error',
-      action: 'error_occurred',
-      details: {
-        error: error.message,
+      event: 'error_occurred',
+      error: {
+        code: 'EVALUATION_ERROR',
+        message: error.message,
+        name: 'EvaluationError',
+      },
+      metadata: {
         context: context,
       },
     };
@@ -137,22 +151,28 @@ class WebhookAuditAdapter implements AuditPort {
     }
   }
 
-  async getAuditTrail(filters: AuditFilters): Promise<AuditEntry[]> {
+  async getAuditTrail(filters: AuditFilters = {}): Promise<AuditEntry[]> {
     let filtered = this.auditHistory;
 
-    if (filters.type) {
-      filtered = filtered.filter((entry) => entry.type === filters.type);
+    if (filters.startTime) {
+      filtered = filtered.filter((entry) => entry.timestamp >= filters.startTime!);
     }
 
-    if (filters.startDate) {
-      filtered = filtered.filter((entry) => entry.timestamp >= filters.startDate);
+    if (filters.endTime) {
+      filtered = filtered.filter((entry) => entry.timestamp <= filters.endTime!);
     }
 
-    if (filters.endDate) {
-      filtered = filtered.filter((entry) => entry.timestamp <= filters.endDate);
+    if (filters.event) {
+      filtered = filtered.filter((entry) => entry.event === filters.event);
     }
 
     return filtered;
+  }
+
+  async purgeOldEntries(olderThan: string): Promise<number> {
+    const initialCount = this.auditHistory.length;
+    this.auditHistory = this.auditHistory.filter((entry) => entry.timestamp >= olderThan);
+    return initialCount - this.auditHistory.length;
   }
 }
 
@@ -205,6 +225,28 @@ const CUSTOM_VOCAB = {
   },
 };
 
+// Simple vocabulary adapter for this example
+class CustomVocabularyAdapter implements VocabularyPort {
+  async resolveVocabulary(uri: string): Promise<any> {
+    if (uri === 'custom:api:v1') {
+      return CUSTOM_VOCAB;
+    }
+    throw new Error(`Unknown vocabulary: ${uri}`);
+  }
+
+  async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+    return true; // Simplified validation
+  }
+
+  async cacheVocabulary(uri: string, schema: any): Promise<void> {
+    // No-op for this example
+  }
+
+  async isVocabularyAllowed(uri: string): Promise<boolean> {
+    return uri === 'custom:api:v1';
+  }
+}
+
 async function main() {
   console.log('🔧 VQP Example: Custom Adapters');
 
@@ -221,11 +263,14 @@ async function main() {
   // Initialize VQP with custom adapters
   const vqpService = new VQPService(
     apiDataAdapter,
-    await createSoftwareCryptoAdapter({
-      keyId: 'custom-service-key',
-    }),
+    await createSoftwareCryptoAdapter(),
     webhookAuditAdapter,
-    await createJSONLogicAdapter()
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
+    new CustomVocabularyAdapter()
   );
 
   // Test queries demonstrating custom adapter capabilities
@@ -307,7 +352,7 @@ async function main() {
 
   console.log(`\n📋 Audit trail: ${auditTrail.length} entries`);
   auditTrail.forEach((entry, index) => {
-    console.log(`   ${index + 1}. ${entry.action} (${entry.type})`);
+    console.log(`   ${index + 1}. ${entry.event} (${entry.result || 'error'})`);
   });
 
   console.log('\n🎉 Custom adapters demonstrate VQP extensibility!');

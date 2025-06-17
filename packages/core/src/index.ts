@@ -7,6 +7,9 @@ export * from './domain/vqp-verifier.js';
 export * from './domain/query-builder.js';
 export * from './domain/query-utils.js';
 
+// Export adapters
+export * from './adapters/response-mode-adapter.js';
+
 // Export vocabulary mapping interfaces and implementations
 export type { VocabularyMapping } from './domain/vqp-service.js';
 export { StandardVocabularyMapping, FlatVocabularyMapping } from './domain/vqp-service.js';

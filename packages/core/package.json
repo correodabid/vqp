@@ -1,6 +1,6 @@
 {
   "name": "@vqp/core",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Core VQP protocol implementation - adapter-agnostic",
   "type": "module",
   "main": "dist/index.js",

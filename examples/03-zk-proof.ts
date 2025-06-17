@@ -7,11 +7,33 @@
  * - Shows integration between crypto adapters
  */
 
-import { VQPService, QueryBuilder } from '@vqp/core';
+import { VQPService, QueryBuilder, createResponseModeAdapter, VocabularyPort } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSnarkjsCryptoAdapter } from '@vqp/crypto-snarkjs';
 import { createConsoleAuditAdapter } from '@vqp/audit-console';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
+
+// Simple vocabulary adapter for the example
+class MockVocabularyAdapter implements VocabularyPort {
+  async resolveVocabulary(uri: string): Promise<any> {
+    if (uri === 'vqp:identity:v1') {
+      return IDENTITY_VOCAB;
+    }
+    throw new Error(`Unknown vocabulary: ${uri}`);
+  }
+
+  async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+    return true; // Simplified validation
+  }
+
+  async cacheVocabulary(uri: string, schema: any): Promise<void> {
+    // No-op for this example
+  }
+
+  async isVocabularyAllowed(uri: string): Promise<boolean> {
+    return uri === 'vqp:identity:v1';
+  }
+}
 
 const IDENTITY_VOCAB = {
   type: 'object',
@@ -24,10 +46,15 @@ async function main() {
   console.log('🔐 VQP Example: Zero-Knowledge Proof');
 
   // Initialize VQP with ZK-SNARK crypto adapter
-  const zkCrypto = await createSnarkjsCryptoAdapter({
-    circuitWasmPath: './circuits/age_verification_js/age_verification.wasm',
-    circuitZkeyPath: './circuits/age_verification_final.zkey',
-    verificationKeyPath: './circuits/age_verification_verification_key.json',
+  const zkCrypto = createSnarkjsCryptoAdapter({
+    circuits: {
+      age_verification: {
+        wasmPath: './circuits/age_verification_js/age_verification.wasm',
+        zkeyPath: './circuits/age_verification_final.zkey',
+        verificationKeyPath: './circuits/age_verification_verification_key.json',
+        provingSystem: 'groth16',
+      },
+    },
   });
 
   const vqpService = new VQPService(
@@ -36,7 +63,12 @@ async function main() {
     }),
     zkCrypto,
     await createConsoleAuditAdapter(),
-    await createJSONLogicAdapter()
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
+    new MockVocabularyAdapter()
   );
 
   // Build age verification query (ZK-friendly)
@@ -68,27 +100,35 @@ async function main() {
     console.log('📥 ZK Response:', {
       result: response.result,
       proofType: response.proof.type,
-      proofSize: response.proof.proof ? response.proof.proof.length : 0,
-      publicInputs: response.proof.publicInputs,
+      proofSize:
+        response.proof.type === 'zk-snark' ? (response.proof as any).proof?.length || 0 : 0,
+      publicInputs:
+        response.proof.type === 'zk-snark' ? (response.proof as any).publicInputs : undefined,
     });
 
     // Verify ZK proof
-    console.log('🔍 Verifying ZK proof...');
-    const isValid = await zkCrypto.verifyZKProof(
-      {
-        proof: response.proof.proof,
-        publicInputs: response.proof.publicInputs,
-      },
-      response.proof.publicInputs
-    );
+    if (response.proof.type === 'zk-snark') {
+      console.log('🔍 Verifying ZK proof...');
+      const isValid = await zkCrypto.verifyZKProof(
+        response.proof,
+        (response.proof as any).publicInputs,
+        'age_verification'
+      );
 
-    console.log('✅ ZK Proof Valid:', isValid);
-    console.log('🎉 Privacy-preserving verification complete!');
-    console.log('📊 What was proven:', {
-      'Age >= 18': response.result,
-      'Actual age revealed': false,
-      'Cryptographic certainty': isValid,
-    });
+      console.log('✅ ZK Proof Valid:', isValid);
+      console.log('🎉 Privacy-preserving verification complete!');
+      console.log('📊 What was proven:', {
+        'Age >= 18': response.result,
+        'Actual age revealed': false,
+        'Cryptographic certainty': isValid,
+      });
+    } else {
+      console.log('ℹ️  Note: ZK proof not generated - using standard signature');
+      console.log('📊 Result:', {
+        'Age >= 18': response.result,
+        'Proof type': response.proof.type,
+      });
+    }
   } catch (error) {
     console.error('❌ ZK proof generation failed:', error.message);
 

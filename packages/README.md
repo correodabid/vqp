@@ -19,37 +19,42 @@ This directory contains the modular package architecture for VQP. Each package i
 - **Optional Features**: Vocabulary resolution is now optional - pass vocabularies directly
 - **Hexagonal Architecture**: Clean separation between business logic and external concerns
 
-## 📦 Packages Disponibles
+## 📦 Available Packages
 
 ### Core
-- `@vqp/core` - Lógica de negocio pura, sin adapters específicos
+- `@vqp/core` - Pure business logic, no specific adapters
 
 ### Data Adapters  
-- `@vqp/data-filesystem` - Almacenamiento en sistema de archivos
-- `@vqp/data-encrypted` - Datos encriptados
-- `@vqp/data-database` - Base de datos SQL/NoSQL
+- `@vqp/data-filesystem` - File system storage
+- `@vqp/data-encrypted` - Encrypted data storage
 
 ### Crypto Adapters
-- `@vqp/crypto-software` - Criptografía por software (Ed25519, secp256k1)
-- `@vqp/crypto-hsm` - Hardware Security Modules
-- `@vqp/crypto-browser` - WebCrypto API para navegadores
+- `@vqp/crypto-software` - Software cryptography (Ed25519, secp256k1)
+- `@vqp/crypto-snarkjs` - ZK-SNARK proof generation and verification
 
 ### Audit Adapters
-- `@vqp/audit-console` - Logging a consola
-- `@vqp/audit-file` - Logging a archivos
-- `@vqp/audit-database` - Logging a base de datos
+- `@vqp/audit-console` - Console logging
+- `@vqp/audit-file` - File logging
+- `@vqp/audit-memory` - In-memory logging (testing)
 
-### Vocabulary Resolvers (Opcionales)
-- `@vqp/vocab-http` - Resolución via HTTP
-- `@vqp/vocab-s3` - Schemas en AWS S3
-- `@vqp/vocab-local` - Schemas locales
+### Vocabulary Resolvers (Optional)
+- `@vqp/vocab-http` - HTTP resolution with caching
 
 ### Query Evaluation  
 - `@vqp/evaluation-jsonlogic` - JSONLogic evaluation engine
 
-## 🔄 Guía de Migración
+## ✨ NEW: Response Modes v1.1
 
-### Antes (Monolítico)
+All packages now support the new Response Modes system:
+
+- **Strict Mode**: Boolean-only responses (maximum privacy)
+- **Consensual Mode**: Value disclosure with explicit user consent  
+- **Reciprocal Mode**: Mutual verification between parties
+- **Obfuscated Mode**: Privacy-preserving value disclosure with ranges/noise
+
+## 🔄 Migration Guide
+
+### Before (Monolithic)
 
 ```typescript
 import { VQPSystem } from 'vqp';
@@ -64,25 +69,25 @@ const system = new VQPSystem({
 const response = await system.getService().processQuery(query);
 ```
 
-**Problemas:**
-- Bundle incluye TODOS los adapters (filesystem, database, HSM, etc.)
-- Vocabularios manejados internamente
-- Configuración rígida
+**Problems:**
+- Bundle includes ALL adapters (filesystem, database, HSM, etc.)
+- Vocabularies handled internally
+- Rigid configuration
 
-### Después (Modular)
+### After (Modular)
 
 ```typescript
-import { VQPService } from '@vqp/core';
+import { VQPService, QueryBuilder } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createConsoleAuditAdapter } from '@vqp/audit-console';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 
-// Solo incluye lo que necesitas
+// Only include what you need
 const dataAdapter = createFileSystemDataAdapter({ vaultPath: './vault.json' });
 const cryptoAdapter = createSoftwareCryptoAdapter();
-const auditAdapter = createConsoleAuditAdapter();
-const queryAdapter = createJSONLogicAdapter();
+const auditAdapter = await createConsoleAuditAdapter();
+const queryAdapter = await createJSONLogicAdapter();
 
 const vqpService = new VQPService(
   dataAdapter,
@@ -91,11 +96,19 @@ const vqpService = new VQPService(
   queryAdapter
 );
 
-// Vocabularios manejados a nivel de aplicación
+// Vocabularies handled at application level
 const vocabularies = {
   'vqp:identity:v1': identitySchema,
   'vqp:financial:v1': financialSchema
 };
+
+// NEW: Response Modes support
+const strictQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ '>=': [{ 'var': 'age' }, 18] })
+  .strict() // Boolean-only response
+  .build();
 
 app.post('/vqp/query', async (req, res) => {
   const query = req.body;

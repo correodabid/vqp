@@ -1,11 +1,17 @@
 /**
- * Example: Custom Vocabulary Mapping
+ * VQP Example 6: Custom Vocabulary Mapping
  *
  * This example demonstrates how to create custom vocabulary mappings
  * for non-standard vault structures and custom vocabularies.
  */
 
-import { VQPService, VocabularyMapping, QueryBuilder } from '@vqp/core';
+import {
+  VQPService,
+  VocabularyMapping,
+  QueryBuilder,
+  createResponseModeAdapter,
+  VocabularyPort,
+} from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createConsoleAuditAdapter } from '@vqp/audit-console';
@@ -50,37 +56,27 @@ class EmployeeVocabularyMapping implements VocabularyMapping {
   }
 
   toVocabularyField(path: string[], vocabularyUri?: string): string {
-    console.log(
-      `🔍 EmployeeMapping.toVocabularyField: path=${JSON.stringify(path)}, vocab="${vocabularyUri}"`
-    );
-
-    if (vocabularyUri === 'company:employee:v1' && path.length >= 3) {
-      if (path[0] === 'employees' && path[1] === this.employeeId) {
-        if (path[2] === 'profile' && path.length >= 4) {
-          const result = `profile.${path.slice(3).join('.')}`;
-          console.log(`  → Mapped to vocabulary field: "${result}"`);
-          return result;
-        }
-        if (path[2] === 'permissions' && path.length >= 4) {
-          const result = `permissions.${path.slice(3).join('.')}`;
-          console.log(`  → Mapped to vocabulary field: "${result}"`);
-          return result;
-        }
-        const result = path.slice(2).join('.');
-        console.log(`  → Mapped to vocabulary field: "${result}"`);
-        return result;
+    if (vocabularyUri === 'company:employee:v1' && path.length >= 3 && path[0] === 'employees') {
+      // path = ['employees', 'emp-123', 'profile', 'level'] → 'profile.level'
+      if (path[2] === 'profile' && path.length === 4) {
+        return `profile.${path[3]}`;
+      }
+      if (path[2] === 'permissions' && path.length === 4) {
+        return `permissions.${path[3]}`;
+      }
+      if (path.length === 3) {
+        return path[2]; // Direct field
       }
     }
 
-    const result = path.join('.');
-    console.log(`  → Default mapping to vocabulary field: "${result}"`);
-    return result;
+    // Default behavior
+    return path.join('.');
   }
 }
 
 /**
- * Custom mapping for IoT device data
- * Vault structure: { devices: { [deviceId]: { sensors: {...}, config: {...} } } }
+ * Custom mapping for IoT device system
+ * Vault structure: { devices: { [id]: { sensors: {...}, config: {...} } } }
  */
 class IoTDeviceMapping implements VocabularyMapping {
   constructor(private deviceId: string) {}
@@ -89,80 +85,110 @@ class IoTDeviceMapping implements VocabularyMapping {
     console.log(`🔍 IoTMapping.toVaultPath: field="${field}", vocab="${vocabularyUri}"`);
 
     if (vocabularyUri === 'iot:device:v1') {
+      // Map device fields to specific device record
       if (field.startsWith('sensor.')) {
-        const sensorField = field.substring(7);
+        const sensorField = field.substring(7); // Remove 'sensor.'
         const path = ['devices', this.deviceId, 'sensors', sensorField];
         console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
         return path;
       }
 
       if (field.startsWith('config.')) {
-        const configField = field.substring(7);
+        const configField = field.substring(7); // Remove 'config.'
         const path = ['devices', this.deviceId, 'config', configField];
         console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
         return path;
       }
 
+      // Direct device fields
       const path = ['devices', this.deviceId, field];
       console.log(`  → Mapped to vault path: ${JSON.stringify(path)}`);
       return path;
     }
 
+    // Default behavior
     const path = field.includes('.') ? field.split('.') : [field];
     console.log(`  → Default mapping to vault path: ${JSON.stringify(path)}`);
     return path;
   }
 
-  toVocabularyField(path: string[]): string {
-    console.log(`🔍 IoTMapping.toVocabularyField: path=${JSON.stringify(path)}`);
-
-    if (path.length >= 3 && path[0] === 'devices' && path[1] === this.deviceId) {
-      if (path[2] === 'sensors' && path.length >= 4) {
-        const result = `sensor.${path.slice(3).join('.')}`;
-        console.log(`  → Mapped to vocabulary field: "${result}"`);
-        return result;
+  toVocabularyField(path: string[], vocabularyUri?: string): string {
+    if (vocabularyUri === 'iot:device:v1' && path.length >= 3 && path[0] === 'devices') {
+      // path = ['devices', 'device-abc123', 'sensors', 'temperature'] → 'sensor.temperature'
+      if (path[2] === 'sensors' && path.length === 4) {
+        return `sensor.${path[3]}`;
       }
-      if (path[2] === 'config' && path.length >= 4) {
-        const result = `config.${path.slice(3).join('.')}`;
-        console.log(`  → Mapped to vocabulary field: "${result}"`);
-        return result;
+      if (path[2] === 'config' && path.length === 4) {
+        return `config.${path[3]}`;
       }
-      const result = path.slice(2).join('.');
-      console.log(`  → Mapped to vocabulary field: "${result}"`);
-      return result;
+      if (path.length === 3) {
+        return path[2]; // Direct field
+      }
     }
 
-    const result = path.join('.');
-    console.log(`  → Default mapping to vocabulary field: "${result}"`);
-    return result;
+    // Default behavior
+    return path.join('.');
   }
 }
 
-async function demonstrateCustomMappings() {
-  console.log('🏢 Custom Vocabulary Mapping Demo\n');
-
-  // Example 1: Employee Management System
-  console.log('--- Employee Management System ---');
-
-  const employeeMapping = new EmployeeVocabularyMapping('emp-123');
-  // Create VQP service with custom employee mapping
-  const employeeService = new VQPService(
-    await createFileSystemDataAdapter({
-      vaultPath: './examples/employee-vault.json',
-    }),
-    await createSoftwareCryptoAdapter({
-      defaultKeyId: 'employee-system-key',
-    }),
-    await createConsoleAuditAdapter(),
-    await createJSONLogicAdapter(),
-    undefined, // No vocabulary resolver
-    {
-      vocabularyMapping: employeeMapping,
-      allowedVocabularies: ['company:employee:v1'],
-    }
+async function main() {
+  console.log('📋 Sample vault structures needed:');
+  console.log(' employee-vault.json:');
+  console.log(
+    JSON.stringify(
+      {
+        employees: {
+          'emp-123': {
+            profile: {
+              name: 'John Doe',
+              department: 'Engineering',
+              level: 'senior',
+            },
+            permissions: {
+              admin: true,
+              database_access: true,
+            },
+            years_experience: 8,
+          },
+        },
+      },
+      null,
+      2
+    )
   );
 
-  // Custom employee vocabulary - using the dot notation as property names
+  console.log(' iot-vault.json:');
+  console.log(
+    JSON.stringify(
+      {
+        devices: {
+          'device-abc123': {
+            sensors: {
+              temperature: 22.5,
+              humidity: 45.2,
+              battery_level: 85,
+            },
+            config: {
+              enabled: true,
+              reporting_interval: 300,
+            },
+            last_seen_minutes: 5,
+          },
+        },
+      },
+      null,
+      2
+    )
+  );
+
+  console.log('\n🏢 Custom Vocabulary Mapping Demo');
+
+  // --- Employee System Example ---
+  console.log('\n--- Employee Management System ---');
+
+  const employeeMapping = new EmployeeVocabularyMapping('emp-123');
+
+  // Custom employee vocabulary
   const employeeVocabulary = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'Company Employee Vocabulary v1',
@@ -170,16 +196,57 @@ async function demonstrateCustomMappings() {
     properties: {
       'profile.name': { type: 'string' },
       'profile.department': { type: 'string' },
-      'profile.level': { type: 'string', enum: ['junior', 'mid', 'senior'] },
+      'profile.level': { type: 'string', enum: ['junior', 'mid', 'senior', 'principal'] },
       'permissions.admin': { type: 'boolean' },
       'permissions.database_access': { type: 'boolean' },
-      years_experience: { type: 'integer' },
+      years_experience: { type: 'integer', minimum: 0 },
     },
   };
 
-  // Query employee data
+  // Employee vocabulary adapter
+  class EmployeeVocabularyAdapter implements VocabularyPort {
+    async resolveVocabulary(uri: string): Promise<any> {
+      if (uri === 'company:employee:v1') {
+        return employeeVocabulary;
+      }
+      throw new Error(`Unknown vocabulary: ${uri}`);
+    }
+
+    async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+      return true; // Simplified validation
+    }
+
+    async cacheVocabulary(uri: string, schema: any): Promise<void> {
+      // No-op for this example
+    }
+
+    async isVocabularyAllowed(uri: string): Promise<boolean> {
+      return uri === 'company:employee:v1';
+    }
+  }
+
+  // Create VQP service with custom employee mapping
+  const employeeService = new VQPService(
+    await createFileSystemDataAdapter({
+      vaultPath: './examples/employee-vault.json',
+    }),
+    await createSoftwareCryptoAdapter(),
+    await createConsoleAuditAdapter(),
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
+    new EmployeeVocabularyAdapter(),
+    {
+      vocabularyMapping: employeeMapping,
+      allowedVocabularies: ['company:employee:v1'],
+    }
+  );
+
+  // Employee query using custom vocabulary
   const employeeQuery = new QueryBuilder()
-    .requester('did:web:hr-system.company.com')
+    .requester('did:web:hr-company.com')
     .vocabulary('company:employee:v1')
     .expression({
       and: [
@@ -190,35 +257,23 @@ async function demonstrateCustomMappings() {
     })
     .build();
 
+  console.log('📤 Employee Query:', employeeQuery.query.expr);
+
   try {
-    console.log('📤 Employee Query:', JSON.stringify(employeeQuery.query.expr, null, 2));
     const employeeResponse = await employeeService.processQuery(employeeQuery, {
       'company:employee:v1': employeeVocabulary,
     });
-    console.log('Employee query result:', employeeResponse.result);
+
+    console.log('✅ Employee Result:', employeeResponse.result);
+    console.log('🔐 Proof type:', employeeResponse.proof.type);
   } catch (error) {
-    console.log('Employee query failed:', (error as Error).message);
+    console.log('❌ Employee query failed:', error.message);
   }
 
-  // Example 2: IoT Device System
+  // --- IoT Device System Example ---
   console.log('\n--- IoT Device System ---');
 
   const deviceMapping = new IoTDeviceMapping('device-abc123');
-  const deviceService = new VQPService(
-    await createFileSystemDataAdapter({
-      vaultPath: './examples/iot-vault.json',
-    }),
-    await createSoftwareCryptoAdapter({
-      defaultKeyId: 'iot-system-key',
-    }),
-    await createConsoleAuditAdapter(),
-    await createJSONLogicAdapter(),
-    undefined,
-    {
-      vocabularyMapping: deviceMapping,
-      allowedVocabularies: ['iot:device:v1'],
-    }
-  );
 
   // Custom IoT vocabulary
   const iotVocabulary = {
@@ -227,17 +282,58 @@ async function demonstrateCustomMappings() {
     type: 'object',
     properties: {
       'sensor.temperature': { type: 'number' },
-      'sensor.humidity': { type: 'number' },
+      'sensor.humidity': { type: 'number', minimum: 0, maximum: 100 },
       'sensor.battery_level': { type: 'number', minimum: 0, maximum: 100 },
       'config.enabled': { type: 'boolean' },
-      'config.reporting_interval': { type: 'integer' },
-      last_seen_minutes: { type: 'integer' },
+      'config.reporting_interval': { type: 'integer', minimum: 1 },
+      last_seen_minutes: { type: 'integer', minimum: 0 },
     },
   };
 
-  // Query device status
+  // IoT vocabulary adapter
+  class IoTVocabularyAdapter implements VocabularyPort {
+    async resolveVocabulary(uri: string): Promise<any> {
+      if (uri === 'iot:device:v1') {
+        return iotVocabulary;
+      }
+      throw new Error(`Unknown vocabulary: ${uri}`);
+    }
+
+    async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+      return true; // Simplified validation
+    }
+
+    async cacheVocabulary(uri: string, schema: any): Promise<void> {
+      // No-op for this example
+    }
+
+    async isVocabularyAllowed(uri: string): Promise<boolean> {
+      return uri === 'iot:device:v1';
+    }
+  }
+
+  // Create VQP service with custom IoT mapping
+  const deviceService = new VQPService(
+    await createFileSystemDataAdapter({
+      vaultPath: './examples/iot-vault.json',
+    }),
+    await createSoftwareCryptoAdapter(),
+    await createConsoleAuditAdapter(),
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
+    new IoTVocabularyAdapter(),
+    {
+      vocabularyMapping: deviceMapping,
+      allowedVocabularies: ['iot:device:v1'],
+    }
+  );
+
+  // IoT device query
   const deviceQuery = new QueryBuilder()
-    .requester('did:web:iot-management.company.com')
+    .requester('did:web:iot-company.com')
     .vocabulary('iot:device:v1')
     .expression({
       and: [
@@ -248,57 +344,26 @@ async function demonstrateCustomMappings() {
     })
     .build();
 
+  console.log('📤 Device Query:', deviceQuery.query.expr);
+
   try {
-    console.log('📤 Device Query:', JSON.stringify(deviceQuery.query.expr, null, 2));
     const deviceResponse = await deviceService.processQuery(deviceQuery, {
       'iot:device:v1': iotVocabulary,
     });
-    console.log('Device query result:', deviceResponse.result);
+
+    console.log('✅ Device Result:', deviceResponse.result);
+    console.log('🔐 Proof type:', deviceResponse.proof.type);
   } catch (error) {
-    console.log('Device query failed:', (error as Error).message);
+    console.log('❌ Device query failed:', error.message);
   }
+
+  console.log('\n🎯 Key Benefits of Custom Vocabulary Mapping:');
+  console.log('• Map vocabulary fields to complex vault structures');
+  console.log('• Support domain-specific data organization');
+  console.log('• Enable flexible field naming in vocabularies');
+  console.log('• Maintain data sovereignty with custom layouts');
+  console.log('• Support multi-tenant data isolation');
 }
 
-// Sample vault files needed for this example
-const sampleEmployeeVault = {
-  employees: {
-    'emp-123': {
-      profile: {
-        name: 'John Doe',
-        department: 'Engineering',
-        level: 'senior',
-      },
-      permissions: {
-        admin: true,
-        database_access: true,
-      },
-      years_experience: 8,
-    },
-  },
-};
-
-const sampleIoTVault = {
-  devices: {
-    'device-abc123': {
-      sensors: {
-        temperature: 22.5,
-        humidity: 45.2,
-        battery_level: 85,
-      },
-      config: {
-        enabled: true,
-        reporting_interval: 300,
-      },
-      last_seen_minutes: 5,
-    },
-  },
-};
-
-console.log('📋 Sample vault structures needed:');
-console.log('\n employee-vault.json:');
-console.log(JSON.stringify(sampleEmployeeVault, null, 2));
-console.log('\n iot-vault.json:');
-console.log(JSON.stringify(sampleIoTVault, null, 2));
-
-// Run the demo
-demonstrateCustomMappings().catch(console.error);
+// Run the example
+main().catch(console.error);

@@ -3,7 +3,17 @@
  * These define how VQP interacts with external systems
  */
 
-import { VQPQuery, VQPResponse, Proof, AuditEntry, VQPError } from '../types.js';
+import {
+  VQPQuery,
+  VQPResponse,
+  Proof,
+  AuditEntry,
+  VQPError,
+  ResponseModeType,
+  ConsentProof,
+  MutualVerificationProof,
+  ObfuscationDetails,
+} from '../types.js';
 
 /**
  * Data Access Port - How VQP accesses and validates data
@@ -82,4 +92,89 @@ export interface AuditPort {
     event?: string;
   }): Promise<AuditEntry[]>;
   purgeOldEntries(olderThan: string): Promise<number>;
+}
+
+/**
+ * Response Mode Port - How VQP handles different response modes
+ */
+export interface ResponseModePort {
+  processResponseMode(
+    query: VQPQuery,
+    evaluationResult: any,
+    actualValue: any
+  ): Promise<{
+    mode: ResponseModeType;
+    result: any;
+    value?: any;
+    additionalData?: any;
+  }>;
+
+  // Individual mode handlers
+  processStrict(result: any): Promise<{ mode: 'strict'; result: any }>;
+  processConsensual(
+    query: VQPQuery,
+    result: any,
+    actualValue: any
+  ): Promise<{
+    mode: 'consensual';
+    result: any;
+    value?: any;
+    consentProof?: ConsentProof;
+  }>;
+  processReciprocal(
+    query: VQPQuery,
+    result: any,
+    actualValue: any
+  ): Promise<{
+    mode: 'reciprocal';
+    result: any;
+    value?: any;
+    mutualProof?: MutualVerificationProof;
+  }>;
+  processObfuscated(
+    query: VQPQuery,
+    result: any,
+    actualValue: any
+  ): Promise<{
+    mode: 'obfuscated';
+    result: any;
+    value?: any;
+    obfuscationApplied?: ObfuscationDetails;
+  }>;
+}
+
+/**
+ * Consent Management Port - How VQP requests and validates user consent
+ */
+export interface ConsentPort {
+  requestConsent(request: {
+    query: any;
+    justification?: string;
+    requestedValue: any;
+    requester: string;
+  }): Promise<ConsentProof>;
+
+  validateConsent(consentProof: ConsentProof): Promise<boolean>;
+}
+
+/**
+ * Obfuscation Port - How VQP applies privacy-preserving transformations
+ */
+export interface ObfuscationPort {
+  applyObfuscation(
+    value: any,
+    method: 'range' | 'noise' | 'rounding',
+    config: {
+      precision?: number;
+      noiseLevel?: number;
+      privacyBudget?: number;
+    }
+  ): Promise<{
+    obfuscatedValue: any;
+    details: ObfuscationDetails;
+  }>;
+
+  createRange(value: number, precision: number): string;
+  addNoise(value: number, noiseLevel: number): number;
+  roundToPrecision(value: number, precision: number): number;
 }

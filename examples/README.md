@@ -47,6 +47,24 @@ npm run build && npx tsx examples/01-basic-age-verification.ts
 - Custom enterprise systems with existing data layouts
 - Multi-tenant systems with tenant-specific data organization
 
+### 7. Schema.org Integration (`07-schema-org-integration-fixed.ts`)
+**What it shows:** Integration with Schema.org vocabularies for interoperability
+**Packages used:** `@vqp/vocab-schemaorg` for Schema.org support
+**Use case:** Query using standard Schema.org Person and Organization vocabularies
+
+### 8. Response Modes v1.1 (`08-response-modes.ts`)
+**What it shows:** NEW - Four different response modes for flexible data disclosure
+**Features:**
+- **Strict Mode**: Boolean-only responses (maximum privacy)
+- **Consensual Mode**: Value disclosure with explicit user consent
+- **Reciprocal Mode**: Mutual verification between parties
+- **Obfuscated Mode**: Privacy-preserving value disclosure with ranges/noise
+**Use case:** 
+- Age verification for streaming services (strict)
+- Salary verification for loans (consensual) 
+- B2B compliance checks (reciprocal)
+- SLA monitoring with privacy (obfuscated)
+
 ## 🏗️ Architecture Benefits
 
 Each example demonstrates VQP's **hexagonal architecture**:

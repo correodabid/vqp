@@ -10,17 +10,163 @@ import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync } from 'node:f
 import { join } from 'node:path';
 
 // Import VQP modular packages
-import { VQPService, QueryBuilder, type VQPQuery, type VQPResponse } from '@vqp/core';
+import { VQPService, QueryBuilder, type VQPQuery, type VQPResponse, VocabularyPort, createResponseModeAdapter } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 import { createMemoryAuditAdapter } from '@vqp/audit-memory';
-import { createHTTPVocabularyResolver } from '@vqp/vocab-http';
+
+// Mock vocabulary adapter for testing
+class MockVocabularyAdapter implements VocabularyPort {
+  private vocabularies = new Map<string, any>();
+
+  constructor() {
+    // Add all standard vocabularies
+    this.vocabularies.set('vqp:identity:v1', {
+      type: 'object',
+      properties: {
+        age: { type: 'integer' },
+        citizenship: { type: 'string' },
+        has_drivers_license: { type: 'boolean' },
+        has_passport: { type: 'boolean' },
+        email_verified: { type: 'boolean' },
+        phone_verified: { type: 'boolean' }
+      }
+    });
+
+    this.vocabularies.set('vqp:financial:v1', {
+      type: 'object',
+      properties: {
+        annual_income: { type: 'integer' },
+        monthly_income: { type: 'integer' },
+        employment_status: { type: 'string' },
+        employment_duration_months: { type: 'integer' },
+        credit_score: { type: 'integer' },
+        has_bank_account: { type: 'boolean' },
+        debt_to_income_ratio: { type: 'number' },
+        tax_resident_country: { type: 'string' }
+      }
+    });
+
+    this.vocabularies.set('vqp:health:v1', {
+      type: 'object',
+      properties: {
+        vaccinations_completed: { type: 'array' },
+        covid_vaccination_doses: { type: 'integer' },
+        blood_type: { type: 'string' },
+        chronic_conditions: { type: 'array' },
+        insurance_verified: { type: 'boolean' }
+      }
+    });
+
+    this.vocabularies.set('vqp:metrics:v1', {
+      type: 'object',
+      properties: {
+        uptime_percentage_24h: { type: 'number' },
+        uptime_percentage_7d: { type: 'number' },
+        response_time_p95_ms: { type: 'number' },
+        error_rate_percentage: { type: 'number' },
+        processed_events_last_hour: { type: 'integer' },
+        health_status: { type: 'string' }
+      }
+    });
+
+    this.vocabularies.set('vqp:academic:v1', {
+      type: 'object',
+      properties: {
+        degrees_earned: { type: 'array' },
+        gpa: { type: 'number' },
+        graduation_year: { type: 'integer' },
+        enrollment_status: { type: 'string' },
+        transcripts_verified: { type: 'boolean' }
+      }
+    });
+  }
+
+  async resolveVocabulary(uri: string): Promise<any> {
+    const vocabulary = this.vocabularies.get(uri);
+    if (!vocabulary) {
+      throw new Error(`Vocabulary not found: ${uri}`);
+    }
+    return vocabulary;
+  }
+
+  async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+    return true;
+  }
+
+  async cacheVocabulary(uri: string, schema: any): Promise<void> {
+    this.vocabularies.set(uri, schema);
+  }
+
+  async isVocabularyAllowed(uri: string): Promise<boolean> {
+    return this.vocabularies.has(uri);
+  }
+}
 
 describe('VQP Comprehensive Flow Tests', () => {
   let vqpService: VQPService;
   let testVaultPath: string;
   let testKeysDir: string;
+
+  // Common test vocabularies
+  const testVocabularies = {
+    'vqp:identity:v1': {
+      type: 'object',
+      properties: {
+        age: { type: 'integer' },
+        citizenship: { type: 'string' },
+        has_drivers_license: { type: 'boolean' },
+        has_passport: { type: 'boolean' },
+        email_verified: { type: 'boolean' },
+        phone_verified: { type: 'boolean' }
+      }
+    },
+    'vqp:financial:v1': {
+      type: 'object',
+      properties: {
+        annual_income: { type: 'integer' },
+        monthly_income: { type: 'integer' },
+        employment_status: { type: 'string' },
+        employment_duration_months: { type: 'integer' },
+        credit_score: { type: 'integer' },
+        has_bank_account: { type: 'boolean' },
+        debt_to_income_ratio: { type: 'number' },
+        tax_resident_country: { type: 'string' }
+      }
+    },
+    'vqp:health:v1': {
+      type: 'object',
+      properties: {
+        vaccinations_completed: { type: 'array' },
+        covid_vaccination_doses: { type: 'integer' },
+        blood_type: { type: 'string' },
+        chronic_conditions: { type: 'array' },
+        insurance_verified: { type: 'boolean' }
+      }
+    },
+    'vqp:metrics:v1': {
+      type: 'object',
+      properties: {
+        uptime_percentage_24h: { type: 'number' },
+        uptime_percentage_7d: { type: 'number' },
+        response_time_p95_ms: { type: 'number' },
+        error_rate_percentage: { type: 'number' },
+        processed_events_last_hour: { type: 'integer' },
+        health_status: { type: 'string' }
+      }
+    },
+    'vqp:academic:v1': {
+      type: 'object',
+      properties: {
+        degrees_earned: { type: 'array' },
+        gpa: { type: 'number' },
+        graduation_year: { type: 'integer' },
+        enrollment_status: { type: 'string' },
+        transcripts_verified: { type: 'boolean' }
+      }
+    }
+  };
 
   beforeEach(async () => {
     // Create comprehensive test vault with multiple data domains
@@ -97,13 +243,18 @@ describe('VQP Comprehensive Flow Tests', () => {
     const cryptoAdapter = await createSoftwareCryptoAdapter();
     const evaluationAdapter = await createJSONLogicAdapter();
     const auditAdapter = await createMemoryAuditAdapter();
-    const vocabularyAdapter = await createHTTPVocabularyResolver();
+    const vocabularyAdapter = new MockVocabularyAdapter();
+    const responseModeAdapter = createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict'
+    });
 
     vqpService = new VQPService(
       dataAdapter,
       cryptoAdapter,
       auditAdapter,
       evaluationAdapter,
+      responseModeAdapter,
       vocabularyAdapter
     );
   });
@@ -138,7 +289,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -166,7 +317,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -193,7 +344,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -220,7 +371,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -246,7 +397,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -270,7 +421,7 @@ describe('VQP Comprehensive Flow Tests', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, false);
     assert.ok(response.proof); // Should still be cryptographically signed
@@ -306,7 +457,7 @@ describe('VQP Comprehensive Flow Tests', () => {
     const responses: VQPResponse[] = [];
     
     for (const query of queries) {
-      const response = await vqpService.processQuery(query);
+      const response = await vqpService.processQuery(query, testVocabularies);
       responses.push(response);
     }
 
@@ -345,7 +496,7 @@ describe('VQP Comprehensive Flow Tests', () => {
 
     // Execute queries in parallel
     const responses = await Promise.all(
-      queries.map(query => vqpService.processQuery(query))
+      queries.map(query => vqpService.processQuery(query, testVocabularies))
     );
 
     // All queries should succeed

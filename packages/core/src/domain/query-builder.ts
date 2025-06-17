@@ -2,7 +2,7 @@
  * Query Builder - Fluent interface for building VQP queries
  */
 
-import { VQPQuery } from './types.js';
+import { VQPQuery, ResponseMode, ResponseModeType } from './types.js';
 import { randomUUID } from 'node:crypto';
 
 export class QueryBuilder {
@@ -11,7 +11,7 @@ export class QueryBuilder {
   constructor() {
     this.query = {
       id: randomUUID(),
-      version: '1.0.0',
+      version: '1.1.0', // Updated to support response modes
       timestamp: new Date().toISOString(),
     };
   }
@@ -30,6 +30,58 @@ export class QueryBuilder {
   target(did: string): QueryBuilder {
     this.query.target = did;
     return this;
+  }
+
+  /**
+   * Set response mode for the query
+   */
+  responseMode(mode: ResponseModeType, config?: any): QueryBuilder {
+    this.query.responseMode = {
+      type: mode,
+      config,
+    };
+    return this;
+  }
+
+  /**
+   * Set strict response mode (default) - only returns boolean result
+   */
+  strict(): QueryBuilder {
+    return this.responseMode('strict');
+  }
+
+  /**
+   * Set consensual response mode - returns actual value if consent is granted
+   */
+  consensual(justification?: string, consentRequired: boolean = true): QueryBuilder {
+    return this.responseMode('consensual', {
+      justification,
+      consentRequired,
+    });
+  }
+
+  /**
+   * Set reciprocal response mode - requires mutual verification
+   */
+  reciprocal(requesterProof: any, requiredClaims: string[]): QueryBuilder {
+    return this.responseMode('reciprocal', {
+      mutualVerification: {
+        requesterProof,
+        requiredClaims,
+      },
+    });
+  }
+
+  /**
+   * Set obfuscated response mode - returns obfuscated actual value
+   */
+  obfuscated(method: 'range' | 'noise' | 'rounding', options: any = {}): QueryBuilder {
+    return this.responseMode('obfuscated', {
+      obfuscation: {
+        method,
+        ...options,
+      },
+    });
   }
 
   /**

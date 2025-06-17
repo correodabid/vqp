@@ -3,7 +3,7 @@
 # 🔐 Verifiable Query Protocol (VQP)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/vqp-protocol/vqp)
+[![Version](https://img.shields.io/badge/Version-1.1.0-green.svg)](https://github.com/vqp-protocol/vqp)
 [![Protocol Status](https://img.shields.io/badge/Status-Specification%20Complete-success.svg)](./docs/spec.md)
 
 ### *The Future of Privacy-Preserving Data Verification*
@@ -91,8 +91,8 @@ import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 
 // 1. Create a VQP responder (data owner)
 const vqpService = new VQPService(
-  await createFileSystemDataAdapter({ vaultPath: './vault.json' }),
-  await createSoftwareCryptoAdapter({ keyId: 'my-service-key' }),
+  createFileSystemDataAdapter({ vaultPath: './vault.json' }),
+  createSoftwareCryptoAdapter({ keyId: 'my-service-key' }),
   await createConsoleAuditAdapter(),
   await createJSONLogicAdapter()
 );
@@ -108,94 +108,165 @@ const response = await vqpService.processQuery(query, {
   'vqp:identity:v1': { /* vocabulary schema */ }
 });
 
-// Simple comparison query
-const ageQuery = QueryBuilder.compare(
-  'did:web:my-service.com',
-  'vqp:identity:v1', 
-  'age', 
-  '>=', 
-  18
-);
-
-// Complex conditional query
-const loanEligibilityQuery = QueryBuilder.and(
-  'did:web:my-service.com',
-  'vqp:financial:v1',
-  [
-    { '>=': [{ var: 'annual_income' }, 50000] },
-    { '<=': [{ var: 'debt_to_income_ratio' }, 0.4] },
-    { '>=': [{ var: 'credit_score' }, 650] }
-  ]
-);
-
-// Raw JSONLogic for ultimate flexibility
-const customQuery = QueryBuilder.fromExpression(
-  'did:web:my-service.com',
-  'my-company:custom:v1',
-  {
-    and: [
-      { '==': [{ var: 'clearance_level' }, 'confidential'] },
-      { in: ['AI_RESEARCH', { var: 'projects' }] }
-    ]
-  }
-);
-
-// 3. Process and verify responses directly
-const vqpService = vqpSystem.getService();
-const response = await vqpService.processQuery(ageQuery);
-
-// Verification without stateful session management
-const crypto = new SoftwareCryptoAdapter();
-const verifier = new VQPVerifier(crypto);
-const isValid = await verifier.verifyComplete(response, ageQuery.id);
-
-if (isValid.overall) {
-  console.log('✅ Verification passed (no data was exposed!)');
-}
-
-// 4. Optional: Helper functions for identity-bound queries
-function createMyQueries(identity: string) {
-  return {
-    ageCheck: (minAge: number) => 
-      QueryBuilder.compare(identity, 'vqp:identity:v1', 'age', '>=', minAge),
-    incomeCheck: (minIncome: number) =>
-      QueryBuilder.compare(identity, 'vqp:financial:v1', 'annual_income', '>=', minIncome)
-  };
-}
-
-const myQueries = createMyQueries('did:web:my-app.com');
-const quickAgeQuery = myQueries.ageCheck(21);
+console.log('Age verification result:', response.result); // true/false
+console.log('Cryptographic proof:', response.proof.signature);
 ```
+
+---
+
+## 🎯 NEW: Response Modes v1.1
+
+**VQP v1.1 introduces flexible response modes** that give data owners fine-grained control over how they respond to queries, enhancing privacy and providing more nuanced verification options.
+
+### Four Response Modes
+
+#### 1. 🔒 **Strict Mode** (Default)
+Boolean-only responses for maximum privacy:
+
+```typescript
+const strictQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ ">=": [{ "var": "age" }, 18] })
+  .strict() // Only returns true/false
+  .build();
+
+// Response: { "result": true, "responseMode": { "mode": "strict" } }
+```
+
+#### 2. 🤝 **Consensual Mode**
+Reveals actual values with explicit user consent:
+
+```typescript
+const consensualQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:financial:v1')
+  .expression({ "var": "annual_income" })
+  .consensual() // Reveals value with consent
+  .build();
+
+// Response: { "result": true, "value": 75000, "responseMode": { "mode": "consensual", "consentProof": true } }
+```
+
+#### 3. 🔄 **Reciprocal Mode**
+Mutual verification between parties:
+
+```typescript
+const reciprocalQuery = new QueryBuilder()
+  .requester('did:web:company-a.com')
+  .vocabulary('vqp:compliance:v1')
+  .expression({ "in": ["ISO-27001", { "var": "certifications_active" }] })
+  .reciprocal() // Requires mutual verification
+  .build();
+
+// Both parties verify each other's compliance status
+```
+
+#### 4. 🎭 **Obfuscated Mode**
+Privacy-preserving value disclosure with noise or ranges:
+
+```typescript
+// Range obfuscation
+const rangeQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:metrics:v1')
+  .expression({ "var": "uptime_percentage_24h" })
+  .obfuscated('range') // Returns value in ranges
+  .build();
+
+// Response: { "value": "95-99%", "responseMode": { "mode": "obfuscated", "obfuscation": "range" } }
+
+// Noise obfuscation
+const noiseQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:financial:v1')
+  .expression({ "var": "annual_income" })
+  .obfuscated('noise') // Adds differential privacy noise
+  .build();
+
+// Response: { "value": 74821, "responseMode": { "mode": "obfuscated", "obfuscation": "noise" } }
+```
+
+### Real-World Examples
+
+```typescript
+// Age verification for streaming service (strict)
+const streamingQuery = new QueryBuilder()
+  .requester('did:web:netflix.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ ">=": [{ "var": "age" }, 13] })
+  .strict()
+  .build();
+
+// Salary verification for loan (consensual)
+const loanQuery = new QueryBuilder()
+  .requester('did:web:bank.com')
+  .vocabulary('vqp:financial:v1')
+  .expression({ ">=": [{ "var": "annual_income" }, 50000] })
+  .consensual()
+  .build();
+
+// B2B compliance check (reciprocal)
+const b2bQuery = new QueryBuilder()
+  .requester('did:web:vendor.com')
+  .vocabulary('vqp:compliance:v1')
+  .expression({ ">=": [{ "var": "audit_score" }, 85] })
+  .reciprocal()
+  .build();
+
+// Service uptime for SLA (obfuscated)
+const slaQuery = new QueryBuilder()
+  .requester('did:web:customer.com')
+  .vocabulary('vqp:metrics:v1')
+  .expression({ "var": "uptime_percentage_7d" })
+  .obfuscated('range')
+  .build();
+```
+
+### Response Mode Benefits
+
+- **🔒 Strict**: Maximum privacy, minimal data disclosure
+- **🤝 Consensual**: Transparency with explicit user control
+- **🔄 Reciprocal**: Mutual trust building between organizations
+- **🎭 Obfuscated**: Useful data while preserving privacy
 
 ---
 
 ## 🔧 Advanced Usage
 
-### Modular Architecture with Subpath Imports
+### Modular Architecture with Hexagonal Design
 
-VQP follows hexagonal architecture and provides modular adapters. You can import specific components:
+VQP follows hexagonal architecture with modular adapters. You can compose systems with different adapters:
 
 ```typescript
-// Import specific crypto adapters
-import { SoftwareCryptoAdapter, SnarkjsCryptoAdapter } from '@vqp/core/crypto';
+import { VQPService } from '@vqp/core';
+import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
+import { createEncryptedDataAdapter } from '@vqp/data-encrypted';
+import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
+import { createSnarkjsCryptoAdapter } from '@vqp/crypto-snarkjs';
 
-// Import data adapters
-import { FileSystemDataAdapter, EncryptedDataAdapter } from '@vqp/core/data';
+// Basic configuration
+const basicVQP = new VQPService(
+  createFileSystemDataAdapter({ vaultPath: './vault.json' }),
+  createSoftwareCryptoAdapter({ keyId: 'basic-key' }),
+  await createConsoleAuditAdapter(),
+  await createJSONLogicAdapter()
+);
 
-// Build custom VQP system with specific adapters
-const vqpSystem = createVQPSystem({
-  data: { 
-    adapter: new EncryptedDataAdapter({
-      vaultPath: './encrypted-vault.json',
-      encryptionKey: process.env.VAULT_KEY
-    })
-  },
-  crypto: { 
-    adapter: new SoftwareCryptoAdapter({
-      keyPath: './keys/private.key'
-    })
-  }
-});
+// High-security configuration with encryption
+const secureVQP = new VQPService(
+  createEncryptedDataAdapter({ 
+    vaultPath: './encrypted-vault.json',
+    encryptionKey: process.env.VAULT_KEY 
+  }),
+  createSnarkjsCryptoAdapter({
+    circuitPath: './circuits/age_verification.r1cs',
+    provingKeyPath: './circuits/proving.key',
+    verificationKeyPath: './circuits/verification.key'
+  }),
+  await createFileAuditAdapter({ logPath: './audit.log' }),
+  await createJSONLogicAdapter()
+);
 ```
 
 ### Zero-Knowledge Proofs
@@ -203,97 +274,103 @@ const vqpSystem = createVQPSystem({
 For maximum privacy, use ZK-SNARK proofs that prove statements without revealing underlying data:
 
 ```typescript
-import { SnarkjsCryptoAdapter } from '@vqp/core/crypto';
+import { createSnarkjsCryptoAdapter } from '@vqp/crypto-snarkjs';
 
-// Use ZK proofs for maximum privacy
-const zkCrypto = new SnarkjsCryptoAdapter({
-  circuitPath: './circuits/age_verification.r1cs',
-  provingKeyPath: './circuits/proving.key',
-  verificationKeyPath: './circuits/verification.key'
-});
-
-const privateVQP = createVQPSystem({
-  crypto: zkCrypto,
-  // ... other adapters
-});
+// Create VQP service with ZK-SNARK support
+const zkVqpService = new VQPService(
+  createFileSystemDataAdapter({ vaultPath: './vault.json' }),
+  createSnarkjsCryptoAdapter({
+    circuitPath: './circuits/age_verification.r1cs',
+    provingKeyPath: './circuits/proving.key',
+    verificationKeyPath: './circuits/verification.key'
+  }),
+  await createConsoleAuditAdapter(),
+  await createJSONLogicAdapter()
+);
 
 // Age verification with ZK proof
-const zkResponse = await querier.query(endpoint, {
-  vocab: 'vqp:identity:v1',
-  expr: { '>=': [{ 'var': 'age' }, 21] }
-});
+const zkQuery = new QueryBuilder()
+  .requester('did:web:private-service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ ">=": [{ "var": "age" }, 21] })
+  .build();
+
+const zkResponse = await zkVqpService.processQuery(zkQuery, vocabularies);
 
 // Response includes ZK proof instead of signature
 console.log(zkResponse.proof.type); // 'zk-snark'
-```
-
-### Schema.org Integration
-
-Query data using the widely-adopted Schema.org vocabulary:
-
-```typescript
-import { createSchemaOrgVocabularyAdapter } from '@vqp/vocab-schemaorg';
-
-// Enable Schema.org vocabulary support
-const vqpService = new VQPService(
-  dataAdapter,
-  cryptoAdapter,
-  evaluationAdapter,
-  createSchemaOrgVocabularyAdapter(), // Schema.org support
-  auditAdapter
-);
-
-// Query using Schema.org Person vocabulary
-const personQuery = new QueryBuilder()
-  .vocabulary('schema.org:Person')
-  .expression({
-    "and": [
-      { ">=": [{ "var": "age" }, 18] },
-      { "!=": [{ "var": "jobTitle" }, ""] },
-      { "!=": [{ "var": "worksFor.name" }, ""] }
-    ]
-  })
-  .build();
-
-// Supports nested Schema.org relationships
-const organizationQuery = new QueryBuilder()
-  .vocabulary('schema.org:Organization')
-  .expression({
-    "and": [
-      { ">": [{ "var": "numberOfEmployees" }, 50] },
-      { "!=": [{ "var": "taxID" }, ""] }
-    ]
-  })
-  .build();
+console.log('Age verified with zero knowledge!');
 ```
 
 ### Custom Vocabularies
+
+Create domain-specific vocabularies for your use cases:
 
 ```typescript
 // Define custom vocabulary for your domain
 const customVocab = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HR Vocabulary v1.0.0",
+  "type": "object",
   "properties": {
     "security_clearance": {
       "type": "string",
-      "enum": ["public", "secret", "top_secret"]
+      "enum": ["public", "confidential", "secret", "top_secret"]
     },
     "years_experience": {
       "type": "integer",
       "minimum": 0
+    },
+    "certifications": {
+      "type": "array",
+      "items": { "type": "string" }
     }
   }
 };
 
-// Query using custom vocabulary
-const response = await querier.query(endpoint, {
-  vocab: 'https://mycompany.com/vqp/vocab/hr/v1',
-  expr: {
+// Use custom vocabulary in queries
+const hrQuery = new QueryBuilder()
+  .requester('did:web:hr-system.com')
+  .vocabulary('https://mycompany.com/vqp/vocab/hr/v1')
+  .expression({
     "and": [
-      { ">=": [{ "var": "security_clearance" }, "secret"] },
-      { ">=": [{ "var": "years_experience" }, 5] }
+      { ">=": [{ "var": "security_clearance" }, "confidential"] },
+      { ">=": [{ "var": "years_experience" }, 5] },
+      { "in": ["AWS-CERTIFIED", { "var": "certifications" }] }
     ]
+  })
+  .build();
+
+const response = await vqpService.processQuery(hrQuery, {
+  'https://mycompany.com/vqp/vocab/hr/v1': customVocab
+});
+```
+    "security_clearance": {
+      "type": "string",
+      "enum": ["public", "secret", "top_secret"]
+    },
+    "certifications": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
   }
+};
+
+// Use custom vocabulary in queries
+const hrQuery = new QueryBuilder()
+  .requester('did:web:hr-system.com')
+  .vocabulary('https://mycompany.com/vqp/vocab/hr/v1')
+  .expression({
+    "and": [
+      { ">=": [{ "var": "security_clearance" }, "confidential"] },
+      { ">=": [{ "var": "years_experience" }, 5] },
+      { "in": ["AWS-CERTIFIED", { "var": "certifications" }] }
+    ]
+  })
+  .build();
+
+const response = await vqpService.processQuery(hrQuery, {
+  'https://mycompany.com/vqp/vocab/hr/v1': customVocab
 });
 ```
 
@@ -382,7 +459,7 @@ graph TB
 // Query Structure (JSONLogic-based)
 {
   "id": "uuid-v4",
-  "version": "1.0.0", 
+  "version": "1.1.0", 
   "requester": "did:web:bank.example.com",
   "query": {
     "lang": "jsonlogic@1.0.0",

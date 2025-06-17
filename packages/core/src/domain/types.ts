@@ -2,13 +2,67 @@
  * Core VQP types and interfaces
  */
 
+// Response Mode Types
+export type ResponseModeType = 'strict' | 'consensual' | 'reciprocal' | 'obfuscated';
+
+export interface ResponseModeConfig {
+  // Para modo consensual
+  justification?: string;
+  consentRequired?: boolean;
+
+  // Para modo reciprocal
+  mutualVerification?: {
+    requesterProof: Proof;
+    requiredClaims: string[];
+  };
+
+  // Para modo obfuscated
+  obfuscation?: {
+    method: 'range' | 'noise' | 'rounding';
+    precision?: number;
+    noiseLevel?: number;
+    privacyBudget?: number;
+  };
+}
+
+export interface ResponseMode {
+  type: ResponseModeType;
+  config?: ResponseModeConfig;
+}
+
+// Obfuscation Details
+export interface ObfuscationDetails {
+  method: 'range' | 'noise' | 'rounding';
+  originalPrecision?: number;
+  appliedPrecision?: number;
+  noiseLevel?: number;
+  privacyBudgetUsed?: number;
+}
+
+// Consent Proof
+export interface ConsentProof {
+  granted: boolean;
+  timestamp: string;
+  signature?: string;
+  userAgent?: string;
+}
+
+// Mutual Verification Proof
+export interface MutualVerificationProof {
+  requesterVerified: boolean;
+  exchangeTimestamp: string;
+  verifiedClaims: string[];
+  reciprocalProof?: Proof;
+}
+
 // Core VQP Query structure
 export interface VQPQuery {
   id: string; // UUID v4
-  version: string; // "1.0.0"
+  version: string; // "1.1.0" - Updated to support response modes
   timestamp: string; // ISO 8601
   requester: string; // DID of querier
   target?: string; // DID of responder (optional for broadcast)
+  responseMode?: ResponseMode; // New: Response mode configuration
   query: {
     lang: 'jsonlogic@1.0.0'; // Query language version
     vocab: string; // Vocabulary URI
@@ -22,8 +76,14 @@ export interface VQPResponse {
   version: string; // VQP version
   timestamp: string; // Response timestamp
   responder: string; // DID of responder
-  result: boolean | number | string | null; // Query result
+  mode: ResponseModeType; // Response mode used
+  result: boolean | number | string | null; // Query result (always present)
+  value?: any; // Actual value (only for non-strict modes)
   proof: Proof;
+  // Mode-specific additional data
+  consentProof?: ConsentProof;
+  mutualProof?: MutualVerificationProof;
+  obfuscationApplied?: ObfuscationDetails;
 }
 
 // Proof types
@@ -71,6 +131,10 @@ export enum VQPErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   CRYPTO_ERROR = 'CRYPTO_ERROR',
   CONFIGURATION_ERROR = 'CONFIGURATION_ERROR',
+  CONSENT_DENIED = 'CONSENT_DENIED',
+  RECIPROCAL_VERIFICATION_FAILED = 'RECIPROCAL_VERIFICATION_FAILED',
+  OBFUSCATION_ERROR = 'OBFUSCATION_ERROR',
+  UNSUPPORTED_RESPONSE_MODE = 'UNSUPPORTED_RESPONSE_MODE',
 }
 
 export type VQPErrorCode =
@@ -83,7 +147,11 @@ export type VQPErrorCode =
   | 'NETWORK_ERROR'
   | 'CRYPTO_ERROR'
   | 'CONFIGURATION_ERROR'
-  | 'PROCESSING_ERROR';
+  | 'PROCESSING_ERROR'
+  | 'CONSENT_DENIED'
+  | 'RECIPROCAL_VERIFICATION_FAILED'
+  | 'OBFUSCATION_ERROR'
+  | 'UNSUPPORTED_RESPONSE_MODE';
 
 export class VQPError extends Error {
   public readonly code: VQPErrorCode;
@@ -171,8 +239,8 @@ export function validateVQPQuery(query: any): ValidationResult {
     errors.push('Query ID is required and must be a string');
   }
 
-  if (!query.version || query.version !== '1.0.0') {
-    errors.push('Version must be "1.0.0"');
+  if (!query.version || !['1.0.0', '1.1.0'].includes(query.version)) {
+    errors.push('Version must be "1.0.0" or "1.1.0"');
   }
 
   if (!query.timestamp || !isValidTimestamp(query.timestamp)) {
@@ -181,6 +249,13 @@ export function validateVQPQuery(query: any): ValidationResult {
 
   if (!query.requester || typeof query.requester !== 'string') {
     errors.push('Requester DID is required');
+  }
+
+  // Validate response mode if present
+  if (query.responseMode) {
+    if (!['strict', 'consensual', 'reciprocal', 'obfuscated'].includes(query.responseMode.type)) {
+      errors.push('Response mode type must be one of: strict, consensual, reciprocal, obfuscated');
+    }
   }
 
   if (!query.query) {
@@ -217,8 +292,8 @@ export function validateVQPResponse(response: any): ValidationResult {
     errors.push('Query ID reference is required');
   }
 
-  if (!response.version || response.version !== '1.0.0') {
-    errors.push('Version must be "1.0.0"');
+  if (!response.version || !['1.0.0', '1.1.0'].includes(response.version)) {
+    errors.push('Version must be "1.0.0" or "1.1.0"');
   }
 
   if (!response.timestamp || !isValidTimestamp(response.timestamp)) {
@@ -227,6 +302,13 @@ export function validateVQPResponse(response: any): ValidationResult {
 
   if (!response.responder || typeof response.responder !== 'string') {
     errors.push('Responder DID is required');
+  }
+
+  if (
+    !response.mode ||
+    !['strict', 'consensual', 'reciprocal', 'obfuscated'].includes(response.mode)
+  ) {
+    errors.push('Mode must be one of: strict, consensual, reciprocal, obfuscated');
   }
 
   if (response.result === undefined || response.result === null) {

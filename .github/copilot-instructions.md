@@ -186,7 +186,7 @@ The project includes complete, runnable examples in `/examples/`:
 ```typescript
 interface VQPQuery {
   id: string;                    // UUID v4
-  version: string;               // "1.0.0"
+  version: string;               // "1.1.0"
   timestamp: string;             // ISO 8601
   requester: string;             // DID of querier
   target?: string;               // DID of responder (optional for broadcast)
@@ -206,6 +206,13 @@ interface VQPResponse {
   timestamp: string;             // Response timestamp
   responder: string;             // DID of responder
   result: boolean | number | string; // Query result
+  responseMode?: {               // NEW: Response Modes v1.1
+    mode: "strict" | "consensual" | "reciprocal" | "obfuscated";
+    consentProof?: boolean;      // For consensual mode
+    mutualProof?: boolean;       // For reciprocal mode
+    obfuscation?: "range" | "noise"; // For obfuscated mode
+  };
+  value?: any;                   // Actual value (consensual/obfuscated modes)
   proof: {
     type: "signature" | "zk-snark" | "multisig";
     algorithm?: string;          // Signature algorithm
@@ -214,6 +221,44 @@ interface VQPResponse {
     // ... other proof-specific fields
   };
 }
+```
+
+### Response Modes v1.1
+
+VQP v1.1 introduces four response modes for flexible data disclosure:
+
+```typescript
+// 1. Strict Mode (default) - Boolean only
+const strictQuery = new QueryBuilder()
+  .requester('did:web:service.com')
+  .vocabulary('vqp:identity:v1')
+  .expression({ ">=": [{ "var": "age" }, 18] })
+  .strict()
+  .build();
+
+// 2. Consensual Mode - Value with consent
+const consensualQuery = new QueryBuilder()
+  .requester('did:web:bank.com')
+  .vocabulary('vqp:financial:v1')
+  .expression({ "var": "annual_income" })
+  .consensual()
+  .build();
+
+// 3. Reciprocal Mode - Mutual verification
+const reciprocalQuery = new QueryBuilder()
+  .requester('did:web:vendor.com')
+  .vocabulary('vqp:compliance:v1')
+  .expression({ "in": ["ISO-27001", { "var": "certifications_active" }] })
+  .reciprocal()
+  .build();
+
+// 4. Obfuscated Mode - Privacy-preserving values
+const obfuscatedQuery = new QueryBuilder()
+  .requester('did:web:customer.com')
+  .vocabulary('vqp:metrics:v1')
+  .expression({ "var": "uptime_percentage_24h" })
+  .obfuscated('range') // or 'noise'
+  .build();
 ```
 
 ### Hexagonal Architecture Examples
@@ -326,8 +371,9 @@ interface VQPError {
 - **Core VQP Protocol**: Full specification implementation
 - **Modular Architecture**: Complete hexagonal architecture with adapter pattern
 - **Package System**: 9 published packages with clean interfaces
+- **Response Modes v1.1**: Four flexible response modes (Strict, Consensual, Reciprocal, Obfuscated)
 - **Cryptographic Proofs**: Both digital signatures and ZK-SNARKs working
-- **Working Examples**: 5 complete examples demonstrating real use cases
+- **Working Examples**: 8 complete examples demonstrating real use cases including Response Modes
 - **Documentation**: Complete specification, guides, and API docs
 - **Testing Infrastructure**: Unit and integration tests with coverage reporting
 - **ZK-SNARK Circuits**: Age verification circuit implemented and tested

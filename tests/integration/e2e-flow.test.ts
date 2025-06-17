@@ -10,17 +10,101 @@ import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync } from 'node:f
 import { join } from 'node:path';
 
 // Import VQP modular packages
-import { VQPService, QueryBuilder, VQPError, VQPQuery } from '@vqp/core';
+import { VQPService, QueryBuilder, VQPError, VQPQuery, VocabularyPort, createResponseModeAdapter } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
 import { createMemoryAuditAdapter } from '@vqp/audit-memory';
-import { createHTTPVocabularyResolver } from '@vqp/vocab-http';
+
+// Mock vocabulary adapter for testing
+class MockVocabularyAdapter implements VocabularyPort {
+  private vocabularies = new Map<string, any>();
+
+  constructor() {
+    // Standard VQP vocabularies
+    this.vocabularies.set('vqp:identity:v1', {
+      type: 'object',
+      properties: {
+        age: { type: 'integer' },
+        citizenship: { type: 'string' },
+        has_drivers_license: { type: 'boolean' }
+      }
+    });
+
+    this.vocabularies.set('vqp:financial:v1', {
+      type: 'object',
+      properties: {
+        annual_income: { type: 'integer' },
+        employment_status: { type: 'string' },
+        tax_resident_country: { type: 'string' }
+      }
+    });
+
+    this.vocabularies.set('vqp:metrics:v1', {
+      type: 'object',
+      properties: {
+        uptime_percentage_24h: { type: 'number' },
+        processed_events_last_hour: { type: 'integer' },
+        error_rate_percentage: { type: 'number' },
+        health_status: { type: 'string' }
+      }
+    });
+  }
+
+  async resolveVocabulary(uri: string): Promise<any> {
+    const vocabulary = this.vocabularies.get(uri);
+    if (!vocabulary) {
+      throw new Error(`Vocabulary not found: ${uri}`);
+    }
+    return vocabulary;
+  }
+
+  async validateAgainstVocabulary(data: any, vocabulary: any): Promise<boolean> {
+    return true; // Basic validation for tests
+  }
+
+  async cacheVocabulary(uri: string, schema: any): Promise<void> {
+    this.vocabularies.set(uri, schema);
+  }
+
+  async isVocabularyAllowed(uri: string): Promise<boolean> {
+    return this.vocabularies.has(uri);
+  }
+}
 
 describe('VQP End-to-End Flow', () => {
   let vqpService: VQPService;
   let testVaultPath: string;
   let testKeysDir: string;
+
+  // Common vocabularies for all tests
+  const testVocabularies = {
+    'vqp:identity:v1': {
+      type: 'object',
+      properties: {
+        age: { type: 'integer' },
+        citizenship: { type: 'string' },
+        has_drivers_license: { type: 'boolean' }
+      }
+    },
+    'vqp:financial:v1': {
+      type: 'object',
+      properties: {
+        annual_income: { type: 'integer' },
+        employment_status: { type: 'string' },
+        tax_resident_country: { type: 'string' }
+      }
+    },
+    'vqp:metrics:v1': {
+      type: 'object',
+      properties: {
+        uptime_percentage_24h: { type: 'number' },
+        processed_events_last_hour: { type: 'integer' },
+        error_rate_percentage: { type: 'number' },
+        health_status: { type: 'string' }
+      }
+    }
+  };
 
   beforeEach(async () => {
     // Create temporary test files
@@ -59,13 +143,18 @@ describe('VQP End-to-End Flow', () => {
     const cryptoAdapter = await createSoftwareCryptoAdapter();
     const evaluationAdapter = await createJSONLogicAdapter();
     const auditAdapter = await createMemoryAuditAdapter();
-    const vocabularyAdapter = await createHTTPVocabularyResolver();
+    const vocabularyAdapter = new MockVocabularyAdapter();
+    const responseModeAdapter = createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict'
+    });
 
     vqpService = new VQPService(
       dataAdapter,
       cryptoAdapter,
       auditAdapter,
       evaluationAdapter,
+      responseModeAdapter,
       vocabularyAdapter
     );
   });
@@ -93,7 +182,7 @@ describe('VQP End-to-End Flow', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.queryId, query.id);
     assert.strictEqual(response.result, true);
@@ -115,7 +204,7 @@ describe('VQP End-to-End Flow', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.queryId, query.id);
     assert.strictEqual(response.result, true);
@@ -141,7 +230,7 @@ describe('VQP End-to-End Flow', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.queryId, query.id);
     assert.strictEqual(response.result, true);
@@ -167,7 +256,7 @@ describe('VQP End-to-End Flow', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);
@@ -186,7 +275,7 @@ describe('VQP End-to-End Flow', () => {
       }
     };
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, false);
     assert.ok(response.proof); // Should still be signed
@@ -252,7 +341,7 @@ describe('VQP End-to-End Flow', () => {
       })
       .build();
 
-    const response = await vqpService.processQuery(query);
+    const response = await vqpService.processQuery(query, testVocabularies);
 
     assert.strictEqual(response.result, true);
     assert.ok(response.proof);

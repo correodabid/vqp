@@ -1,6 +1,6 @@
 {
   "name": "@vqp/evaluation-jsonlogic",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "JSONLogic evaluation adapter for VQP",
   "type": "module",
   "main": "dist/index.js",
@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vqp/core": "^0.0.6"
+    "@vqp/core": "^0.0.7"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

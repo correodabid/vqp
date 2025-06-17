@@ -6,7 +6,7 @@
  * and product information queries.
  */
 
-import { VQPService, QueryBuilder } from '@vqp/core';
+import { VQPService, QueryBuilder, createResponseModeAdapter } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createJSONLogicAdapter } from '@vqp/evaluation-jsonlogic';
@@ -76,12 +76,16 @@ async function main() {
 
   // Create VQP service with Schema.org vocabulary support
   const vqpService = new VQPService(
-    await createFileSystemDataAdapter({
+    createFileSystemDataAdapter({
       vaultPath: './examples/schema-org-vault.json',
     }),
-    await createSoftwareCryptoAdapter({}),
+    createSoftwareCryptoAdapter({}),
     await createConsoleAuditAdapter(),
     await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    }),
     createSchemaOrgVocabularyAdapter(),
     {
       vocabularyMapping: new SchemaOrgVocabularyMapping(),

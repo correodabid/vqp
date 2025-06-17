@@ -7,7 +7,7 @@
  * - Shows complete flow: query → evaluation → response → verification
  */
 
-import { VQPService, QueryBuilder } from '@vqp/core';
+import { VQPService, QueryBuilder, createResponseModeAdapter } from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createConsoleAuditAdapter } from '@vqp/audit-console';
@@ -32,11 +32,13 @@ async function main() {
     await createFileSystemDataAdapter({
       vaultPath: './examples/sample-vault.json',
     }),
-    await createSoftwareCryptoAdapter({
-      keyId: 'personal-key',
-    }),
+    await createSoftwareCryptoAdapter(),
     await createConsoleAuditAdapter(),
-    await createJSONLogicAdapter()
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    })
   );
 
   // 2. Build age verification query
@@ -58,7 +60,7 @@ async function main() {
   console.log('📥 Response:', JSON.stringify(response, null, 2));
 
   // 4. Verify response signature
-  const crypto = await createSoftwareCryptoAdapter({ keyId: 'personal-key' });
+  const crypto = await createSoftwareCryptoAdapter();
   const isValid = await crypto.verify(
     response.proof,
     Buffer.from(
@@ -69,7 +71,8 @@ async function main() {
         responder: response.responder,
       })
     ),
-    response.proof.publicKey
+    // For signature proofs, extract the public key
+    'publicKey' in response.proof ? response.proof.publicKey : 'default-public-key'
   );
 
   console.log('✅ Signature Valid:', isValid);

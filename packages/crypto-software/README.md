@@ -19,7 +19,7 @@ import { VQPService } from '@vqp/core';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 
 // Create the adapter
-const cryptoAdapter = await createSoftwareCryptoAdapter({
+const cryptoAdapter = createSoftwareCryptoAdapter({
   keyPath: './keys/private.key',
   algorithm: 'ed25519'
 });

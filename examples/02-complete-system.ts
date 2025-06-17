@@ -8,7 +8,13 @@
  * - Audit logging
  */
 
-import { VQPService, QueryBuilder, VQPQuery, VQPResponse } from '@vqp/core';
+import {
+  VQPService,
+  QueryBuilder,
+  type VQPQuery,
+  type VQPResponse,
+  createResponseModeAdapter,
+} from '@vqp/core';
 import { createFileSystemDataAdapter } from '@vqp/data-filesystem';
 import { createSoftwareCryptoAdapter } from '@vqp/crypto-software';
 import { createFileAuditAdapter } from '@vqp/audit-file';
@@ -88,13 +94,15 @@ async function main() {
     await createFileSystemDataAdapter({
       vaultPath: './examples/sample-vault.json',
     }),
-    await createSoftwareCryptoAdapter({
-      keyId: 'server-key',
-    }),
+    await createSoftwareCryptoAdapter(),
     await createFileAuditAdapter({
       logDirectory: './logs',
     }),
-    await createJSONLogicAdapter()
+    await createJSONLogicAdapter(),
+    createResponseModeAdapter({
+      autoConsent: true,
+      defaultMode: 'strict',
+    })
   );
 
   const server = new VQPServer(vqpService);
@@ -137,7 +145,7 @@ async function main() {
 
       console.log(`📥 Response ${index + 1}:`, {
         result: response.result,
-        verified: !!response.proof.signature,
+        verified: response.proof.type === 'signature' && 'signature' in response.proof,
       });
     } catch (error) {
       console.error(`❌ Query ${index + 1} failed:`, error.message);

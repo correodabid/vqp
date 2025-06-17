@@ -3,13 +3,14 @@
  * This service is completely isolated from external concerns
  */
 
-import { VQPQuery, VQPResponse, VQPError } from './types.js';
+import { VQPQuery, VQPResponse, VQPError, ResponseModeType } from './types.js';
 import {
   DataAccessPort,
   CryptographicPort,
   VocabularyPort,
   AuditPort,
   QueryEvaluationPort,
+  ResponseModePort,
 } from './ports/secondary.js';
 
 export interface VocabularyMapping {
@@ -117,6 +118,7 @@ export class VQPService {
     private crypto: CryptographicPort,
     private audit: AuditPort,
     private queryEvaluation: QueryEvaluationPort,
+    private responseMode: ResponseModePort, // New: Response Mode port
     private vocabulary?: VocabularyPort, // Now optional
     private config: {
       maxQueryComplexity?: number;
@@ -174,20 +176,46 @@ export class VQPService {
       const responseTimestamp = new Date().toISOString();
       const responderDID = await this.getResponderDID();
 
-      // 10. Generate cryptographic proof using the exact same data
-      const proof = await this.generateProof(query, result, responseTimestamp, responderDID);
+      // 10. Process response mode (NEW)
+      const responseModeResult = await this.responseMode.processResponseMode(
+        query,
+        result,
+        result // actualValue - same as result for now
+      );
 
-      // 11. Create response using the same timestamp used in proof
+      // 11. Generate cryptographic proof using the processed result
+      const proof = await this.generateProof(
+        query,
+        responseModeResult.result,
+        responseTimestamp,
+        responderDID
+      );
+
+      // 12. Create response with response mode data
       const response: VQPResponse = {
         queryId: query.id,
         version: query.version,
         timestamp: responseTimestamp,
         responder: responderDID,
-        result,
+        mode: responseModeResult.mode,
+        result: responseModeResult.result,
         proof,
+        // Optional mode-specific fields
+        ...(responseModeResult.value !== undefined && { value: responseModeResult.value }),
+        ...(responseModeResult.additionalData && {
+          ...(responseModeResult.additionalData.consentProof && {
+            consentProof: responseModeResult.additionalData.consentProof,
+          }),
+          ...(responseModeResult.additionalData.mutualProof && {
+            mutualProof: responseModeResult.additionalData.mutualProof,
+          }),
+          ...(responseModeResult.additionalData.obfuscationApplied && {
+            obfuscationApplied: responseModeResult.additionalData.obfuscationApplied,
+          }),
+        }),
       };
 
-      // 11. Log successful query processing
+      // 13. Log successful query processing
       await this.audit.logQuery(query, response);
 
       return response;
